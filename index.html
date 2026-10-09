@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v1.0 — Shared Expense Tracker</title>
+<title>SplitSmart v1.1 — Shared Expense Tracker</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -37,7 +37,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.0</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.1</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -46,6 +46,17 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
  </div>
 </header>
 <main>
+  <section class="card" id="authPanel" style="margin-bottom:16px">
+   <h2>Connect to your shared household</h2>
+   <p class="muted">Sign in with an account authorized for your household. Both friends must use their own accounts.</p>
+   <div class="form-grid">
+    <div><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="username" placeholder="you@example.com" required></div>
+    <div><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" required></div>
+   </div>
+   <div class="submit-row"><button type="button" id="signInBtn">Sign in</button><button type="button" class="secondary" id="signUpBtn">Account setup info</button><button type="button" class="secondary" id="signOutBtn" style="display:none">Sign out</button><span id="authStatus" class="muted">Not signed in. Cloud sync is unavailable until you sign in.</span></div>
+  </section>
+  <div id="appContent" style="display:none">
+
  <section class="card" id="calculatorPanel" style="display:none;margin-bottom:16px">
   <div class="card-head"><h2>Quick calculator</h2><button class="secondary small-btn" id="calculatorClose">Close</button></div>
   <div style="max-width:360px">
@@ -60,7 +71,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 1.0:</b> This release includes expense tracking, 50/50 settlement, saving tips, export/import, and a quick calculator. Data currently saves in this browser only. Live access from both phones requires online hosting plus a shared database and sign-in.</div>
+ <div class="notice"><b>Version 1.1:</b> Firebase sign-in and cloud-sync integration. Cloud access requires the household-specific Firestore security rules to be configured before use. Keep real financial data out until that step is complete.</div>
  <div class="toolbar">
   <div class="field month"><label for="monthFilter">MONTH TO VIEW</label><input type="month" id="monthFilter"></div>
   <div class="field"><label for="friend1">FRIEND 1</label><input id="friend1" value="Me" maxlength="35"></div>
@@ -115,9 +126,29 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <div class="summary-list section-gap"><div class="summary-row"><span>Target</span><b id="targetView">₹1,000</b></div><div class="summary-row"><span>Spend so far</span><b id="spendView">₹0</b></div><div class="summary-row"><span>Tip</span><b id="targetTip">Review recurring costs first</b></div></div>
   </section>
  </div>
+  </div>
 </main>
 <footer>SplitSmart · Keep shared purchases honest, review spending monthly, and agree on rules together.</footer>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAjySxoFRo3DFvKpb9_le03HQuhCFGWJDI",
+  authDomain: "splitsmart-shared-expenses.firebaseapp.com",
+  projectId: "splitsmart-shared-expenses",
+  storageBucket: "splitsmart-shared-expenses.firebasestorage.app",
+  messagingSenderId: "1077421397509",
+  appId: "1:1077421397509:web:14198a1b3e0e1836ae2e6e",
+  measurementId: "G-4M6N59X9DP"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const sharedDoc = db.collection("sharedData").doc("main");
+let cloudReady = false, remoteUpdate = false, unsubscribeShared = null;
+const authStatus = document.getElementById("authStatus");
+function setAuthStatus(message){ authStatus.textContent = message; }
 const CATEGORIES=["Groceries","Breakfast","Lunch","Dinner","Rent & bills","Petrol / travel","Other expenses"];
 const KEY="splitsmart_v1";
 const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n)||0);
@@ -126,7 +157,13 @@ const isoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-$
 const monthOf=d=>String(d||"").slice(0,7);
 let state={friend1:"Me",friend2:"Friend",expenses:[],savingTarget:1000};
 function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];}catch(e){}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(state));}
+function persist(){
+  localStorage.setItem(KEY,JSON.stringify(state));
+  if(cloudReady && !remoteUpdate){
+    sharedDoc.set({...state, updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser.uid})
+      .catch(err=>{console.error(err);setAuthStatus("Cloud save failed: "+(err.code||err.message)+". Check Firestore rules.");});
+  }
+}
 function names(){return [state.friend1||"Friend 1",state.friend2||"Friend 2"];}
 function currentMonth(){return document.getElementById("monthFilter").value||monthOf(isoDate(today));}
 function currentExpenses(){return state.expenses.filter(e=>monthOf(e.date)===currentMonth()).sort((a,b)=>b.date.localeCompare(a.date)||b.created-b.created);}
@@ -217,6 +254,28 @@ document.getElementById("calcKeys").addEventListener("click",e=>{
 });
 
 load();document.getElementById("monthFilter").value=monthOf(isoDate(today));document.getElementById("date").value=isoDate(today);render();
+const appContent=document.getElementById("appContent");
+function showSignedIn(user){
+ document.getElementById("signOutBtn").style.display="inline-block";
+ document.getElementById("signInBtn").style.display="none";
+ document.getElementById("signUpBtn").style.display="none";
+ document.getElementById("authEmail").disabled=true;document.getElementById("authPassword").disabled=true;
+ appContent.style.display="block";
+ setAuthStatus("Signed in as "+(user.email||user.uid)+". Connecting to shared household data…");
+ if(unsubscribeShared)unsubscribeShared();
+ unsubscribeShared=sharedDoc.onSnapshot(doc=>{
+   if(doc.exists){remoteUpdate=true;const data=doc.data();state={friend1:data.friend1||"Me",friend2:data.friend2||"Friend",expenses:Array.isArray(data.expenses)?data.expenses:[],savingTarget:Number(data.savingTarget??1000)};localStorage.setItem(KEY,JSON.stringify(state));remoteUpdate=false;}
+   else { setAuthStatus("Signed in, but shared household data has not been initialized. Ask the owner to configure the secure Firestore rules and initialize the shared document."); }
+   cloudReady=doc.exists;render();
+   if(doc.exists)setAuthStatus("Cloud sync connected. Signed in as "+(user.email||user.uid)+".");
+ },err=>{cloudReady=false;setAuthStatus("Cloud sync blocked: "+(err.code||err.message)+". Firestore security rules must authorize this account.");});
+}
+document.getElementById("signInBtn").addEventListener("click",async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPassword").value;if(!email||!password){setAuthStatus("Enter your email and password.");return;}try{await auth.signInWithEmailAndPassword(email,password);}catch(e){setAuthStatus("Sign-in failed: "+(e.code||e.message));}});
+document.getElementById("signUpBtn").addEventListener("click",async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPassword").value;if(!email||password.length<6){setAuthStatus("Enter an email and a password of at least 6 characters.");return;}setAuthStatus("Account creation is not enabled here until the household security rules are finalized. Create accounts in Firebase Authentication for now.");});
+document.getElementById("signOutBtn").addEventListener("click",()=>auth.signOut());
+auth.onAuthStateChanged(user=>{
+ if(user){showSignedIn(user);}else{cloudReady=false;if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}appContent.style.display="none";document.getElementById("signOutBtn").style.display="none";document.getElementById("signInBtn").style.display="inline-block";document.getElementById("signUpBtn").style.display="inline-block";document.getElementById("authEmail").disabled=false;document.getElementById("authPassword").disabled=false;setAuthStatus("Not signed in. Cloud sync is unavailable until you sign in.");}
+});
 </script>
 </body>
 </html>
