@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v1.2 — Shared Expense Tracker</title>
+<title>SplitSmart MG — Shared Expense Tracker</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -106,7 +106,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <div><label id="advance1Label" for="advance1">Friend 1 advance (₹)</label><input id="advance1" type="number" min="0" step="0.01" value="0"></div>
    <div><label id="advance2Label" for="advance2">Friend 2 advance (₹)</label><input id="advance2" type="number" min="0" step="0.01" value="0"></div>
   </div>
-  <p class="muted">For purchases paid from this fund, choose <b>Shared advance</b> as the payer. That prevents the advance from being counted twice.</p>
+  <p class="muted">Advances are now applied automatically to monthly expenses first. Once the advance is used up, the remaining expense amount is credited to the payer selected on each expense. Unused advance money is not counted as an expense.</p>
  </section>
  <section class="grid">
   <div class="card"><div class="metric-label">SHARED SPEND</div><div class="metric-value" id="totalSpend">₹0</div><div class="metric-sub" id="expenseCount">0 expenses this month</div></div>
@@ -238,6 +238,31 @@ function names(){return [state.friend1||"Friend 1",state.friend2||"Friend 2"];}
 function currentMonth(){return document.getElementById("monthFilter").value||monthOf(isoDate(today));}
 function currentExpenses(){return state.expenses.filter(e=>monthOf(e.date)===currentMonth()).sort((a,b)=>b.date.localeCompare(a.date)||b.created-b.created);}
 function sum(list){return list.reduce((a,e)=>a+Number(e.amount||0),0);}
+// Automatically apply monthly advances to expenses first, then credit any remaining
+// expense amount to the payer recorded on that expense. Advance credits are split
+// between the two contributors in proportion to the advances they supplied.
+function calculateFunding(expenses, advances){
+ const ordered=[...expenses].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||Number(a.created||0)-Number(b.created||0));
+ const total=sum(ordered), adv1=Math.max(0,Number(advances?.[1]||0)), adv2=Math.max(0,Number(advances?.[2]||0));
+ const advanceTotal=adv1+adv2, advanceUsed=Math.min(total,advanceTotal);
+ const advanceCredit1=advanceTotal?advanceUsed*adv1/advanceTotal:0;
+ const advanceCredit2=advanceTotal?advanceUsed*adv2/advanceTotal:0;
+ let advanceRemaining=advanceUsed, direct1=0, direct2=0;
+ for(const expense of ordered){
+   const amount=Math.max(0,Number(expense.amount||0));
+   const used=Math.min(amount,advanceRemaining); advanceRemaining-=used;
+   const direct=Math.max(0,amount-used);
+   if(Number(expense.payer)===2) direct2+=direct;
+   else if(Number(expense.payer)===3){
+     // If an expense exceeds the available advance, treat the unfunded remainder
+     // as paid by the first friend rather than losing it from the settlement.
+     direct1+=direct;
+   } else direct1+=direct;
+ }
+ return {total, advanceTotal, advanceUsed, advanceCredit1, advanceCredit2,
+   direct1, direct2, contributed1:direct1+advanceCredit1,
+   contributed2:direct2+advanceCredit2, fromAdvance:advanceUsed};
+}
 function filteredExpenses(list){
  const category=document.getElementById("historyCategory")?.value||"all";
  const fromDate=document.getElementById("historyDateFrom")?.value||"";
@@ -247,22 +272,19 @@ function filteredExpenses(list){
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
- const paid1=sum(allMonthEx.filter(e=>e.payer===1)), paid2=sum(allMonthEx.filter(e=>e.payer===2)), fromAdvance=sum(allMonthEx.filter(e=>e.payer===3));
- const adv=monthAdvance(), advanceTotal=Number(adv[1]||0)+Number(adv[2]||0), advanceUsed=Math.min(fromAdvance,advanceTotal), advanceCredit1=advanceTotal?advanceUsed*Number(adv[1]||0)/advanceTotal:0, advanceCredit2=advanceTotal?advanceUsed*Number(adv[2]||0)/advanceTotal:0, contributed1=paid1+advanceCredit1, contributed2=paid2+advanceCredit2, balance=contributed1-share;
+ const adv=monthAdvance(), funding=calculateFunding(allMonthEx,adv), contributed1=funding.contributed1, contributed2=funding.contributed2, balance=contributed1-share;
  document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;
  document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
  document.getElementById("advance1Label").textContent=`${n1} advance (₹)`;document.getElementById("advance2Label").textContent=`${n2} advance (₹)`;
  document.getElementById("advance1").value=Number(adv[1]||0);document.getElementById("advance2").value=Number(adv[2]||0);
  document.getElementById("totalSpend").textContent=money(total);document.getElementById("expenseCount").textContent=`${ex.length} expense${ex.length===1?"":"s"} this month`;
- document.getElementById("eachShare").textContent=money(share);document.getElementById("paid1Label").textContent=`PAID BY ${n1.toUpperCase()}`;document.getElementById("paid2Label").textContent=`PAID BY ${n2.toUpperCase()}`;
+ document.getElementById("eachShare").textContent=money(share);document.getElementById("paid1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("paid2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
  document.getElementById("paid1").textContent=money(contributed1);document.getElementById("paid2").textContent=money(contributed2);
- document.getElementById("sTotal").textContent=money(total);document.getElementById("sShare").textContent=money(share);document.getElementById("sPaid1Label").textContent=`${n1} paid + advance`;document.getElementById("sPaid2Label").textContent=`${n2} paid + advance`;document.getElementById("sPaid1").textContent=money(contributed1);document.getElementById("sPaid2").textContent=money(contributed2);
+ document.getElementById("sTotal").textContent=money(total);document.getElementById("sShare").textContent=money(share);document.getElementById("sPaid1Label").textContent=`${n1} contribution (direct + advance)`;document.getElementById("sPaid2Label").textContent=`${n2} contribution (direct + advance)`;document.getElementById("sPaid1").textContent=money(contributed1);document.getElementById("sPaid2").textContent=money(contributed2);
  document.getElementById("advance1").value=Number(adv[1]||0);document.getElementById("advance2").value=Number(adv[2]||0);
  let settle="No settlement needed",sub="You are both square for this month.";
- if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1} paid more than their fair 50% share.`}
- else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2} paid more than their fair 50% share.`}
- if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s expenses paid plus advances exceed their fair share.`}
- else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s expenses paid plus advances exceed their fair share.`}
+ if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s total contribution (direct payments plus their share of used advances) exceeds their fair share.`}
+ else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s total contribution (direct payments plus their share of used advances) exceeds their fair share.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
  const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>`<tr><td>${safe(e.date)}</td><td>${safe(e.description)}</td><td><span class="pill">${safe(e.category)}</span></td><td>${safe(e.payer===1?n1:e.payer===2?n2:"Shared advance")}</td><td class="amount">${money(e.amount)}</td><td><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></td></tr>`).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
@@ -282,11 +304,13 @@ function renderSummary(){
  const prior=yearEl.value;yearEl.innerHTML=[...years].sort((a,b)=>b.localeCompare(a)).map(y=>`<option value="${y}">${y}</option>`).join("");
  yearEl.value=years.has(prior)?prior:String(today.getFullYear());
  const year=yearEl.value,[n1,n2]=names(),list=state.expenses.filter(e=>String(e.date||"").startsWith(year));
- const total=sum(list),paid1=sum(list.filter(e=>e.payer===1)),paid2=sum(list.filter(e=>e.payer===2)),fromAdvance=sum(list.filter(e=>e.payer===3));
- document.getElementById("yearTotal").textContent=money(total);document.getElementById("yearFriend1Label").textContent=`PAID BY ${n1.toUpperCase()}`;document.getElementById("yearFriend2Label").textContent=`PAID BY ${n2.toUpperCase()}`;
+ const total=sum(list),yearFunding=list.reduce((acc,e)=>{const m=monthOf(e.date);(acc[m]||(acc[m]=[])).push(e);return acc;},{});
+ const yearlyFunding=Object.entries(yearFunding).reduce((acc,[m,monthEx])=>{const f=calculateFunding(monthEx,state.advances?.[m]||{});acc.paid1+=f.contributed1;acc.paid2+=f.contributed2;acc.fromAdvance+=f.advanceUsed;return acc;},{paid1:0,paid2:0,fromAdvance:0});
+ const paid1=yearlyFunding.paid1,paid2=yearlyFunding.paid2,fromAdvance=yearlyFunding.fromAdvance;
+ document.getElementById("yearTotal").textContent=money(total);document.getElementById("yearFriend1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("yearFriend2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
  document.getElementById("yearPaid1").textContent=money(paid1);document.getElementById("yearPaid2").textContent=money(paid2);document.getElementById("yearAverage").textContent=money(total/12);
  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
- document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),adv=state.advances?.[m]||{1:0,2:0},from=sum(ex.filter(e=>e.payer===3)),advTotal=Number(adv[1]||0)+Number(adv[2]||0),used=Math.min(from,advTotal),a1=advTotal?used*Number(adv[1]||0)/advTotal:0,a2=advTotal?used*Number(adv[2]||0)/advTotal:0;return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(sum(ex.filter(e=>e.payer===1))+a1)}</td><td>${money(sum(ex.filter(e=>e.payer===2))+a2)}</td><td>${money(from)} <span class="muted">(${ex.filter(e=>e.payer===3).length} purchases)</span></td><td>${ex.length}</td></tr>`}).join("");
+ document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),adv=state.advances?.[m]||{1:0,2:0},f=calculateFunding(ex,adv);return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(f.contributed1)}</td><td>${money(f.contributed2)}</td><td>${money(f.advanceUsed)} <span class="muted">used</span></td><td>${ex.length}</td></tr>`}).join("");
  const cats=CATEGORIES.map(cat=>({cat,total:sum(list.filter(e=>e.category===cat))})).sort((a,b)=>b.total-a.total),max=Math.max(1,...cats.map(c=>c.total));
  document.getElementById("yearCategoryBreakdown").innerHTML=cats.map(c=>`<div class="cat-row"><span>${safe(c.cat)}</span><div class="bar"><span style="width:${c.total/max*100}%"></span></div><span class="cat-amount">${money(c.total)}</span></div>`).join("");
  document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} paid directly</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} paid directly</span><b>${money(paid2)}</b></div><div class="summary-row"><span>Purchases from shared advances</span><b>${money(fromAdvance)}</b></div><div class="summary-row"><span>Monthly snapshots saved</span><b>${Object.keys(state.monthlySnapshots||{}).filter(m=>m.startsWith(year)).length} / 12</b></div>`;
