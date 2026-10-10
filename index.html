@@ -237,6 +237,19 @@ function persist(){
 function names(){return [state.friend1||"Friend 1",state.friend2||"Friend 2"];}
 function currentMonth(){return document.getElementById("monthFilter").value||monthOf(isoDate(today));}
 function currentExpenses(){return state.expenses.filter(e=>monthOf(e.date)===currentMonth()).sort((a,b)=>b.date.localeCompare(a.date)||b.created-b.created);}
+ 
+function filteredExpenses(list) {
+  const category = document.getElementById("historyCategory").value;
+  const fromDate = document.getElementById("historyDateFrom").value;
+  const toDate = document.getElementById("historyDateTo").value;
+
+  return list.filter(e =>
+    (category === "all" || e.category === category) &&
+    (!fromDate || e.date >= fromDate) &&
+    (!toDate || e.date <= toDate)
+  );
+}
+
 function sum(list){return list.reduce((a,e)=>a+Number(e.amount||0),0);}
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function render(){
