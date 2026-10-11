@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart MG v1.3 — Custom Expense Splits</title>
+<title>SplitSmart MG v1.4 </title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -48,12 +48,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 .summary-list .summary-row b{ text-align:right}
 .audit-action{font-weight:750}.audit-time{white-space:nowrap;color:var(--muted);font-size:12px}
 .audit-add{color:#147a53}.audit-delete{color:#bd3343}.audit-login{color:#2b55cf}
+.item-panel{display:none;border:1px solid var(--line);background:#fbfcff;border-radius:12px;padding:12px;margin-top:10px}.item-list{display:grid;gap:8px}.item-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(100px,.7fr) auto;gap:8px;align-items:center}.owner-tabs{display:flex;gap:8px;margin:8px 0 12px}.owner-tab{background:#edf1f8;color:#34415d}.owner-tab.active{background:var(--blue);color:white}.item-row button{padding:8px 10px}.item-total{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-weight:750}
+@media(max-width:480px){.item-row{grid-template-columns:minmax(0,1fr) minmax(85px,.7fr) auto}.owner-tabs button{flex:1}}
 @media(max-width:700px){.filters{grid-template-columns:1fr 1fr}.filters button{min-height:42px}.tabs{position:static}.tab-button{flex:1;padding:10px 8px}.summary-metrics{grid-template-columns:1fr 1fr}}
 \n</style>
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.3</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.4</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -87,7 +89,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 1.3:</b> Custom expense splits, House advance tracking, monthly/yearly summaries, month saving, expense filters and audit history.</div>
+ <div class="notice"><b>Version 1.4:</b> Itemized Shopping and Groceries, custom expense splits, House advance tracking, monthly/yearly summaries, expense filters and audit history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="summaryTab">Monthly summary</button>
@@ -123,9 +125,21 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
       <div><label for="date">Date</label><input type="date" id="date" required></div>
       <div><label for="amount">Amount (₹)</label><input type="number" id="amount" min="0.01" step="0.01" placeholder="e.g. 180" required></div>
       <div class="wide"><label for="description">What did you buy?</label><input id="description" maxlength="100" placeholder="e.g. Vegetables and milk" required></div>
-      <div><label for="category">Category</label><select id="category"><option>Groceries</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
+      <div><label for="category">Category</label><select id="category"><option>Groceries</option><option>Shopping</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
       <div><label for="payer">Paid by</label><select id="payer"><option value="1">Me</option><option value="2">Friend</option><option value="3">Shared advance</option></select></div>
-      <div class="wide" style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcff">
+      <div class="wide item-panel" id="itemPanel">
+       <h3 id="itemPanelTitle" style="font-size:14px;margin:0 0 4px">Groceries items</h3>
+       <p class="muted" id="itemPanelHelp">Add each grocery item and its amount. The expense total is calculated from the items.</p>
+       <div id="shoppingOwnerPanel" hidden>
+        <div class="muted">Who is this shopping for?</div>
+        <div class="owner-tabs"><button type="button" class="owner-tab active" id="owner1Tab">My Shopping</button><button type="button" class="owner-tab" id="owner2Tab">Friend's Shopping</button></div>
+       </div>
+       <div id="itemRows" class="item-list"></div>
+       <div class="submit-row"><button type="button" class="secondary small-btn" id="addItemBtn">+ Add item</button></div>
+       <div class="item-total"><span>Items total</span><span id="itemsTotal">₹0.00</span></div>
+       <div class="muted" id="itemSplitHint" style="margin-top:6px"></div>
+      </div>
+      <div class="wide" id="customSplitPanel" style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcff">
        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin:0"><input id="customSplitEnabled" type="checkbox" style="width:auto"> Use a custom split (otherwise 50/50)</label>
        <div id="customSplitFields" class="form-grid" style="margin-top:10px;display:none">
         <div><label id="expenseShare1Label" for="expenseShare1">My share (₹)</label><input id="expenseShare1" type="number" min="0" step="0.01" placeholder="e.g. 200"></div>
@@ -140,7 +154,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <section class="card section-gap">
     <div class="card-head"><h2>Expense history</h2><button id="csvBtn" class="secondary small-btn">Download CSV</button></div>
     <div class="filters">
-     <div><label for="historyCategory">FILTER BY CATEGORY</label><select id="historyCategory"><option value="all">All categories</option><option>Groceries</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
+     <div><label for="historyCategory">FILTER BY CATEGORY</label><select id="historyCategory"><option value="all">All categories</option><option>Groceries</option><option>Shopping</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
      <div><label for="historyDateFrom">FROM DATE</label><input id="historyDateFrom" type="date"></div>
      <div><label for="historyDateTo">TO DATE</label><input id="historyDateTo" type="date"></div>
      <button id="clearHistoryFilters" class="secondary">Clear filters</button>
@@ -222,7 +236,7 @@ const sharedDoc = db.collection("sharedData").doc("main");
 let cloudReady = false, remoteUpdate = false, unsubscribeShared = null;
 const authStatus = document.getElementById("authStatus");
 function setAuthStatus(message){ authStatus.textContent = message; }
-const CATEGORIES=["Groceries","Breakfast","Lunch","Dinner","Rent & bills","Petrol / travel","Other expenses"];
+const CATEGORIES=["Groceries","Shopping","Breakfast","Lunch","Dinner","Rent & bills","Petrol / travel","Other expenses"];
 const KEY="splitsmart_v1";
 const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n)||0);
 const today=new Date();
@@ -305,7 +319,7 @@ function render(){
  if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s contributions exceed their assigned share of expenses.`}
  else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s contributions exceed their assigned share of expenses.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
- const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{houseUsed:0,direct:Number(e.amount)||0,payer:e.payer};let source;if(f.houseUsed>0&&f.direct>0)source=f.payer===3?`House ${money(f.houseUsed)} + shared remainder ${money(f.direct)}`:`House ${money(f.houseUsed)} + ${safe(f.payer===2?n2:n1)} ${money(f.direct)}`;else if(f.houseUsed>0)source=`House fund ${money(f.houseUsed)}`;else if(f.payer===3)source=`House fund / shared remainder ${money(f.direct)}`;else source=safe(f.payer===2?n2:n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></td></tr>`}).join("");
+ const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{houseUsed:0,direct:Number(e.amount)||0,payer:e.payer};let source;if(f.houseUsed>0&&f.direct>0)source=f.payer===3?`House ${money(f.houseUsed)} + shared remainder ${money(f.direct)}`:`House ${money(f.houseUsed)} + ${safe(f.payer===2?n2:n1)} ${money(f.direct)}`;else if(f.houseUsed>0)source=`House fund ${money(f.houseUsed)}`;else if(f.payer===3)source=`House fund / shared remainder ${money(f.direct)}`;else source=safe(f.payer===2?n2:n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<div class="muted" style="font-size:11px">Items: ${e.items.map(it=>`${safe(it.name)} ${money(it.amount)}`).join(" · ")}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></td></tr>`}).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
  const breakdown=CATEGORIES.map(c=>({cat:c,total:sum(allMonthEx.filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total);
  const max=Math.max(1,...breakdown.map(x=>x.total));
@@ -353,6 +367,48 @@ function renderTips(ex,total,breakdown,n1,n2){
  tips.push({cls:"",title:"Keep a small emergency buffer",text:"Build a separate cash buffer for unexpected bills. Avoid using credit-card debt for routine groceries or meals when possible."});
  document.getElementById("tips").innerHTML=tips.map(t=>`<div class="tip ${t.cls}"><b>${safe(t.title)}</b><p>${safe(t.text)}</p></div>`).join("");
 }
+const groceryItems=["Onions","Tomatoes","Eggs","Curd","Milk","Potatoes","Rice","Dal","Bread","Cooking oil","Vegetables","Fruits","Others"];
+const shoppingItems=["Shirts","Pants","T-shirts","Jeans","Shoes","Socks","Jacket","Innerwear","Accessories","Others"];
+let shoppingOwner=1;
+function itemOptions(category,selected=""){
+ const items=category==="Shopping"?shoppingItems:groceryItems;
+ return items.map(x=>`<option ${x===selected?"selected":""}>${safe(x)}</option>`).join("");
+}
+function addItemRow(name="",amount=""){
+ const category=document.getElementById("category").value;
+ const row=document.createElement("div");row.className="item-row";
+ row.innerHTML=`<div><select class="item-name" aria-label="Item name">${itemOptions(category,name|| (category==="Shopping"?"Shirts":"Onions"))}</select><input class="item-other" aria-label="Other item name" placeholder="Enter item name" style="display:none;margin-top:6px"></div><input class="item-amount" type="number" min="0.01" step="0.01" placeholder="Amount ₹" aria-label="Item amount" value="${safe(amount)}" required><button type="button" class="danger" aria-label="Remove item">×</button>`;
+ const select=row.querySelector(".item-name"), other=row.querySelector(".item-other");
+ function updateOther(){const isOther=select.value==="Others";other.style.display=isOther?"block":"none";other.required=isOther;if(!isOther)other.value="";updateItemTotal();}
+ select.addEventListener("change",updateOther);other.addEventListener("input",updateItemTotal);row.querySelector(".item-amount").addEventListener("input",updateItemTotal);
+ row.querySelector("button").addEventListener("click",()=>{row.remove();if(!document.querySelector("#itemRows .item-row"))addItemRow();updateItemTotal();});
+ document.getElementById("itemRows").appendChild(row);updateOther();
+}
+function itemMode(){return ["Groceries","Shopping"].includes(document.getElementById("category").value);}
+function updateItemTotal(){
+ const panel=document.getElementById("itemPanel");if(!panel)return;
+ const rows=[...document.querySelectorAll("#itemRows .item-row")];const total=rows.reduce((s,r)=>s+(Math.max(0,Number(r.querySelector(".item-amount").value)||0)),0);
+ document.getElementById("itemsTotal").textContent=money(total);
+ const amountEl=document.getElementById("amount");if(itemMode()){amountEl.value=total?total.toFixed(2):"";const namesForDescription=rows.map(r=>{const chosen=r.querySelector(".item-name").value;return chosen==="Others"?r.querySelector(".item-other").value.trim():chosen;}).filter(Boolean);document.getElementById("description").value=namesForDescription.join(", ").slice(0,100);}
+ const shopping=document.getElementById("category").value==="Shopping";
+ document.getElementById("itemSplitHint").textContent=shopping?`This shopping is assigned 100% to ${names()[shoppingOwner-1]}.` : "Groceries are shared 50/50 by default. You can use custom split below if needed.";
+ if(shopping){document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitPanel").style.display="none";document.getElementById("customSplitFields").style.display="none";}
+}
+function refreshItemRows(){
+ const cat=document.getElementById("category").value, panel=document.getElementById("itemPanel"), shopping=cat==="Shopping";
+ panel.style.display=itemMode()?"block":"none";
+ if(!itemMode()){document.getElementById("customSplitPanel").style.display="block";document.querySelectorAll("#itemRows input, #itemRows select, #itemRows button").forEach(el=>el.disabled=true);document.getElementById("addItemBtn").disabled=true;return;}
+ document.getElementById("itemPanelTitle").textContent=shopping?"Shopping items":"Groceries items";
+ document.getElementById("itemPanelHelp").textContent=shopping?"Choose whether these items belong to you or your friend, then enter each item's amount.":"Add each grocery item and its amount. The bill total is calculated from the items.";
+ document.getElementById("shoppingOwnerPanel").hidden=!shopping;
+ document.getElementById("customSplitPanel").style.display=shopping?"none":"block";
+ document.getElementById("itemRows").innerHTML="";document.getElementById("addItemBtn").disabled=false;addItemRow();updateItemTotal();
+}
+document.getElementById("owner1Tab").addEventListener("click",()=>{shoppingOwner=1;document.getElementById("owner1Tab").classList.add("active");document.getElementById("owner2Tab").classList.remove("active");updateItemTotal();});
+document.getElementById("owner2Tab").addEventListener("click",()=>{shoppingOwner=2;document.getElementById("owner2Tab").classList.add("active");document.getElementById("owner1Tab").classList.remove("active");updateItemTotal();});
+document.getElementById("addItemBtn").addEventListener("click",()=>addItemRow());
+document.getElementById("category").addEventListener("change",()=>{refreshItemRows();if(document.getElementById("customSplitEnabled").checked)updateSplitHint();});
+
 document.getElementById("customSplitEnabled").addEventListener("change",e=>{
  const enabled=e.target.checked, amount=Number(document.getElementById("amount").value)||0;
  document.getElementById("customSplitFields").style.display=enabled?"grid":"none";
@@ -373,15 +429,17 @@ document.getElementById("expenseForm").addEventListener("submit",e=>{
  e.preventDefault();const amount=Number(document.getElementById("amount").value);
  if(!Number.isFinite(amount)||amount<=0){alert("Enter an amount greater than zero.");return}
  let share1=null,share2=null;
- if(document.getElementById("customSplitEnabled").checked){
+ if(category!=="Shopping" && document.getElementById("customSplitEnabled").checked){
    share1=Number(document.getElementById("expenseShare1").value);share2=Number(document.getElementById("expenseShare2").value);
    if(!Number.isFinite(share1)||!Number.isFinite(share2)||share1<0||share2<0||Math.abs(share1+share2-amount)>=0.011){alert("The two shares must be zero or more and add up to the total bill.");return;}
  }
- const expense={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:document.getElementById("date").value,description:document.getElementById("description").value.trim(),category:document.getElementById("category").value,amount,payer:Number(document.getElementById("payer").value),created:Date.now()};
+ const expense={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:document.getElementById("date").value,description:document.getElementById("description").value.trim(),category,amount,payer:Number(document.getElementById("payer").value),created:Date.now()};
+ if(items.length)expense.items=items;
  if(share1!==null){expense.share1=share1;expense.share2=share2;}
- state.expenses.push(expense);audit("add",`${expense.description} · ${money(amount)} · ${expense.category}${share1!==null?` · split ${money(share1)}/${money(share2)}`:" · 50/50 split"}`);
+ state.expenses.push(expense);audit("add",`${expense.description} · ${money(amount)} · ${expense.category}${category==="Shopping"?` · assigned to ${names()[shoppingOwner-1]}`:share1!==null?` · split ${money(share1)}/${money(share2)}`:" · 50/50 split"}`);
  const expenseDate=document.getElementById("date").value;
  persist();document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";
+ if(itemMode()){document.getElementById("itemRows").innerHTML="";addItemRow();updateItemTotal();}
  document.getElementById("monthFilter").value=monthOf(expenseDate);render();
 });
 document.getElementById("expenseRows").addEventListener("click",e=>{const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
@@ -439,6 +497,7 @@ document.getElementById("calcKeys").addEventListener("click",e=>{
 load();document.getElementById("monthFilter").value=monthOf(isoDate(today));document.getElementById("date").value=isoDate(today);
 document.getElementById("summaryYear").innerHTML=`<option value="${today.getFullYear()}">${today.getFullYear()}</option>`;
 render();
+refreshItemRows();
 const appContent=document.getElementById("appContent");
 let lastAuditedUid=null;
 function showSignedIn(user){
