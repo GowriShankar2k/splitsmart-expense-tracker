@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart MG v1.4 </title>
+<title>SplitSmart v1.4 — Itemized Shopping & Groceries</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -426,21 +426,55 @@ function updateSplitHint(){
 }
 document.getElementById("expenseShare1").addEventListener("input",updateSplitHint);document.getElementById("expenseShare2").addEventListener("input",updateSplitHint);
 document.getElementById("expenseForm").addEventListener("submit",e=>{
- e.preventDefault();const amount=Number(document.getElementById("amount").value);
- if(!Number.isFinite(amount)||amount<=0){alert("Enter an amount greater than zero.");return}
+ e.preventDefault();
+ const category=document.getElementById("category").value;
+ const itemModeActive=itemMode();
+ let amount=Number(document.getElementById("amount").value);
+ const items=[];
+ if(itemModeActive){
+   const rows=[...document.querySelectorAll("#itemRows .item-row")];
+   if(!rows.length){alert("Add at least one item and its amount.");return;}
+   for(const row of rows){
+     const selected=row.querySelector(".item-name").value;
+     const name=selected==="Others"?row.querySelector(".item-other").value.trim():selected;
+     const itemAmount=Number(row.querySelector(".item-amount").value);
+     if(!name){alert("Please enter a name for the item marked Others.");return;}
+     if(!Number.isFinite(itemAmount)||itemAmount<=0){alert("Enter an amount greater than zero for each item.");return;}
+     items.push({name,amount:itemAmount});
+   }
+   amount=items.reduce((total,item)=>total+item.amount,0);
+   document.getElementById("amount").value=amount.toFixed(2);
+ }
+ if(!Number.isFinite(amount)||amount<=0){alert("Enter an amount greater than zero.");return;}
  let share1=null,share2=null;
- if(category!=="Shopping" && document.getElementById("customSplitEnabled").checked){
-   share1=Number(document.getElementById("expenseShare1").value);share2=Number(document.getElementById("expenseShare2").value);
+ if(category==="Shopping"){
+   // Personal shopping is assigned fully to the selected person's share.
+   share1=shoppingOwner===1?amount:0;
+   share2=shoppingOwner===2?amount:0;
+ } else if(document.getElementById("customSplitEnabled").checked){
+   share1=Number(document.getElementById("expenseShare1").value);
+   share2=Number(document.getElementById("expenseShare2").value);
    if(!Number.isFinite(share1)||!Number.isFinite(share2)||share1<0||share2<0||Math.abs(share1+share2-amount)>=0.011){alert("The two shares must be zero or more and add up to the total bill.");return;}
  }
- const expense={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:document.getElementById("date").value,description:document.getElementById("description").value.trim(),category,amount,payer:Number(document.getElementById("payer").value),created:Date.now()};
+ const description=document.getElementById("description").value.trim() || (items.length?items.map(item=>item.name).join(", "):"");
+ if(!description){alert("Enter a description for this expense.");return;}
+ const expense={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:document.getElementById("date").value,description,category,amount,payer:Number(document.getElementById("payer").value),created:Date.now()};
  if(items.length)expense.items=items;
  if(share1!==null){expense.share1=share1;expense.share2=share2;}
- state.expenses.push(expense);audit("add",`${expense.description} · ${money(amount)} · ${expense.category}${category==="Shopping"?` · assigned to ${names()[shoppingOwner-1]}`:share1!==null?` · split ${money(share1)}/${money(share2)}`:" · 50/50 split"}`);
+ if(category==="Shopping")expense.shoppingOwner=shoppingOwner;
+ state.expenses.push(expense);
+ audit("add",`${expense.description} · ${money(amount)} · ${category}${category==="Shopping"?` · assigned to ${names()[shoppingOwner-1]}`:share1!==null?` · split ${money(share1)}/${money(share2)}`:" · 50/50 split"}`);
  const expenseDate=document.getElementById("date").value;
- persist();document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";
- if(itemMode()){document.getElementById("itemRows").innerHTML="";addItemRow();updateItemTotal();}
- document.getElementById("monthFilter").value=monthOf(expenseDate);render();
+ persist();
+ document.getElementById("description").value="";
+ document.getElementById("amount").value="";
+ document.getElementById("customSplitEnabled").checked=false;
+ document.getElementById("customSplitFields").style.display="none";
+ document.getElementById("expenseShare1").value="";
+ document.getElementById("expenseShare2").value="";
+ if(itemModeActive){document.getElementById("itemRows").innerHTML="";addItemRow();updateItemTotal();}
+ document.getElementById("monthFilter").value=monthOf(expenseDate);
+ render();
 });
 document.getElementById("expenseRows").addEventListener("click",e=>{const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
