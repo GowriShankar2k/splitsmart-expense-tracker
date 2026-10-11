@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v1.4 — Itemized Shopping & Groceries</title>
+<title>SplitSmart MG v1.5 </title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -132,7 +132,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
        <p class="muted" id="itemPanelHelp">Add each grocery item and its amount. The expense total is calculated from the items.</p>
        <div id="shoppingOwnerPanel" hidden>
         <div class="muted">Who is this shopping for?</div>
-        <div class="owner-tabs"><button type="button" class="owner-tab active" id="owner1Tab">My Shopping</button><button type="button" class="owner-tab" id="owner2Tab">Friend's Shopping</button></div>
+        <div class="owner-tabs"><button type="button" class="owner-tab active" id="owner1Tab">Gowrishankar Shopping</button><button type="button" class="owner-tab" id="owner2Tab">Maniraju Shopping</button></div>
        </div>
        <div id="itemRows" class="item-list"></div>
        <div class="submit-row"><button type="button" class="secondary small-btn" id="addItemBtn">+ Add item</button></div>
@@ -305,7 +305,7 @@ function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
  const adv=monthAdvance(), funding=calculateFunding(allMonthEx,adv), contributed1=funding.contributed1, contributed2=funding.contributed2, balance=funding.balance1;
- document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;
+ document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;updateShoppingOwnerLabels();
  document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
  document.getElementById("expenseShare1Label").textContent=`${n1} share (₹)`;document.getElementById("expenseShare2Label").textContent=`${n2} share (₹)`;
  document.getElementById("advance1Label").textContent=`${n1} advance (₹)`;document.getElementById("advance2Label").textContent=`${n2} advance (₹)`;
@@ -370,19 +370,43 @@ function renderTips(ex,total,breakdown,n1,n2){
 const groceryItems=["Onions","Tomatoes","Eggs","Curd","Milk","Potatoes","Rice","Dal","Bread","Cooking oil","Vegetables","Fruits","Others"];
 const shoppingItems=["Shirts","Pants","T-shirts","Jeans","Shoes","Socks","Jacket","Innerwear","Accessories","Others"];
 let shoppingOwner=1;
+// Keep each person's shopping items in a separate temporary list while entering an expense.
+const shoppingItemsByOwner={1:[],2:[]};
 function itemOptions(category,selected=""){
  const items=category==="Shopping"?shoppingItems:groceryItems;
  return items.map(x=>`<option ${x===selected?"selected":""}>${safe(x)}</option>`).join("");
 }
 function addItemRow(name="",amount=""){
  const category=document.getElementById("category").value;
+ const options=category==="Shopping"?shoppingItems:groceryItems;
+ const isCustom=Boolean(name)&&!options.includes(name);
+ const selected=isCustom?"Others":(name|| (category==="Shopping"?"Shirts":"Onions"));
  const row=document.createElement("div");row.className="item-row";
- row.innerHTML=`<div><select class="item-name" aria-label="Item name">${itemOptions(category,name|| (category==="Shopping"?"Shirts":"Onions"))}</select><input class="item-other" aria-label="Other item name" placeholder="Enter item name" style="display:none;margin-top:6px"></div><input class="item-amount" type="number" min="0.01" step="0.01" placeholder="Amount ₹" aria-label="Item amount" value="${safe(amount)}" required><button type="button" class="danger" aria-label="Remove item">×</button>`;
+ row.innerHTML=`<div><select class="item-name" aria-label="Item name">${itemOptions(category,selected)}</select><input class="item-other" aria-label="Other item name" placeholder="Enter item name" style="display:none;margin-top:6px" value="${safe(isCustom?name:"")}"></div><input class="item-amount" type="number" min="0.01" step="0.01" placeholder="Amount ₹" aria-label="Item amount" value="${safe(amount)}" required><button type="button" class="danger" aria-label="Remove item">×</button>`;
  const select=row.querySelector(".item-name"), other=row.querySelector(".item-other");
  function updateOther(){const isOther=select.value==="Others";other.style.display=isOther?"block":"none";other.required=isOther;if(!isOther)other.value="";updateItemTotal();}
  select.addEventListener("change",updateOther);other.addEventListener("input",updateItemTotal);row.querySelector(".item-amount").addEventListener("input",updateItemTotal);
  row.querySelector("button").addEventListener("click",()=>{row.remove();if(!document.querySelector("#itemRows .item-row"))addItemRow();updateItemTotal();});
  document.getElementById("itemRows").appendChild(row);updateOther();
+}
+function readCurrentItemRows(){
+ return [...document.querySelectorAll("#itemRows .item-row")].map(row=>{
+  const selected=row.querySelector(".item-name").value;
+  return {name:selected==="Others"?row.querySelector(".item-other").value.trim():selected,amount:row.querySelector(".item-amount").value};
+ }).filter(item=>item.name||item.amount);
+}
+function saveCurrentShoppingItems(){shoppingItemsByOwner[shoppingOwner]=readCurrentItemRows();}
+function loadShoppingItemsForOwner(owner){
+ const rows=shoppingItemsByOwner[owner]||[];
+ document.getElementById("itemRows").innerHTML="";
+ if(rows.length) rows.forEach(item=>addItemRow(item.name,item.amount));
+ else addItemRow();
+ updateItemTotal();
+}
+function updateShoppingOwnerLabels(){
+ const [first,second]=names();
+ document.getElementById("owner1Tab").textContent=`${first} Shopping`;
+ document.getElementById("owner2Tab").textContent=`${second} Shopping`;
 }
 function itemMode(){return ["Groceries","Shopping"].includes(document.getElementById("category").value);}
 function updateItemTotal(){
@@ -404,10 +428,16 @@ function refreshItemRows(){
  document.getElementById("customSplitPanel").style.display=shopping?"none":"block";
  document.getElementById("itemRows").innerHTML="";document.getElementById("addItemBtn").disabled=false;addItemRow();updateItemTotal();
 }
-document.getElementById("owner1Tab").addEventListener("click",()=>{shoppingOwner=1;document.getElementById("owner1Tab").classList.add("active");document.getElementById("owner2Tab").classList.remove("active");updateItemTotal();});
-document.getElementById("owner2Tab").addEventListener("click",()=>{shoppingOwner=2;document.getElementById("owner2Tab").classList.add("active");document.getElementById("owner1Tab").classList.remove("active");updateItemTotal();});
+document.getElementById("owner1Tab").addEventListener("click",()=>{
+ if(shoppingOwner===1)return;saveCurrentShoppingItems();shoppingOwner=1;
+ document.getElementById("owner1Tab").classList.add("active");document.getElementById("owner2Tab").classList.remove("active");loadShoppingItemsForOwner(1);
+});
+document.getElementById("owner2Tab").addEventListener("click",()=>{
+ if(shoppingOwner===2)return;saveCurrentShoppingItems();shoppingOwner=2;
+ document.getElementById("owner2Tab").classList.add("active");document.getElementById("owner1Tab").classList.remove("active");loadShoppingItemsForOwner(2);
+});
 document.getElementById("addItemBtn").addEventListener("click",()=>addItemRow());
-document.getElementById("category").addEventListener("change",()=>{refreshItemRows();if(document.getElementById("customSplitEnabled").checked)updateSplitHint();});
+document.getElementById("category").addEventListener("change",()=>{if(document.getElementById("category").value==="Shopping")loadShoppingItemsForOwner(shoppingOwner);else refreshItemRows();if(document.getElementById("customSplitEnabled").checked)updateSplitHint();});
 
 document.getElementById("customSplitEnabled").addEventListener("change",e=>{
  const enabled=e.target.checked, amount=Number(document.getElementById("amount").value)||0;
@@ -433,6 +463,7 @@ document.getElementById("expenseForm").addEventListener("submit",e=>{
  const items=[];
  if(itemModeActive){
    const rows=[...document.querySelectorAll("#itemRows .item-row")];
+   if(category==="Shopping")saveCurrentShoppingItems();
    if(!rows.length){alert("Add at least one item and its amount.");return;}
    for(const row of rows){
      const selected=row.querySelector(".item-name").value;
@@ -463,6 +494,7 @@ document.getElementById("expenseForm").addEventListener("submit",e=>{
  if(share1!==null){expense.share1=share1;expense.share2=share2;}
  if(category==="Shopping")expense.shoppingOwner=shoppingOwner;
  state.expenses.push(expense);
+ if(category==="Shopping"){shoppingItemsByOwner[1]=[];shoppingItemsByOwner[2]=[];shoppingOwner=1;document.getElementById("owner1Tab").classList.add("active");document.getElementById("owner2Tab").classList.remove("active");updateShoppingOwnerLabels();}
  audit("add",`${expense.description} · ${money(amount)} · ${category}${category==="Shopping"?` · assigned to ${names()[shoppingOwner-1]}`:share1!==null?` · split ${money(share1)}/${money(share2)}`:" · 50/50 split"}`);
  const expenseDate=document.getElementById("date").value;
  persist();
