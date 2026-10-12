@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v1.6 — Simple Shopping Entry</title>
+<title>SplitSmart MG v1.7</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -40,7 +40,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 .tab-panel{animation:fadeIn .18s ease}.tab-panel[hidden]{display:none!important}
 @keyframes fadeIn{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .advance-card{margin-bottom:16px;background:linear-gradient(135deg,#fff 0%,#f5f8ff 100%)}
-.filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:9px;align-items:end;margin:10px 0 14px}
+.filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:end;margin:10px 0 14px}.history-filters button{align-self:end}.history-filters input,.history-filters select{min-width:0}
 .filters label,.summary-controls label{display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px}
 .summary-controls{min-width:130px}
 .summary-metrics{margin:12px 0 18px}
@@ -55,7 +55,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.6</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.7</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -156,10 +156,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    </section>
    <section class="card section-gap">
     <div class="card-head"><h2>Expense history</h2><button id="csvBtn" class="secondary small-btn">Download CSV</button></div>
-    <div class="filters">
-     <div><label for="historyCategory">FILTER BY CATEGORY</label><select id="historyCategory"><option value="all">All categories</option><option>Groceries</option><option>Shopping</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
-     <div><label for="historyDateFrom">FROM DATE</label><input id="historyDateFrom" type="date"></div>
-     <div><label for="historyDateTo">TO DATE</label><input id="historyDateTo" type="date"></div>
+    <div class="filters history-filters">
+     <div><label for="historyDateFrom">DATE FROM</label><input id="historyDateFrom" type="date"></div>
+     <div><label for="historyDateTo">DATE TO</label><input id="historyDateTo" type="date"></div>
+     <div><label for="historyDetails">DETAILS</label><input id="historyDetails" type="search" placeholder="Search description or item"></div>
+     <div><label for="historyPaidBy">PAID BY</label><select id="historyPaidBy"><option value="all">Everyone</option><option value="1">Friend 1</option><option value="2">Friend 2</option><option value="3">Shared advance</option></select></div>
+     <div><label for="historyAmountMin">MIN AMOUNT (₹)</label><input id="historyAmountMin" type="number" min="0" step="0.01" placeholder="Any"></div>
+     <div><label for="historyAmountMax">MAX AMOUNT (₹)</label><input id="historyAmountMax" type="number" min="0" step="0.01" placeholder="Any"></div>
      <button id="clearHistoryFilters" class="secondary">Clear filters</button>
     </div>
     <div class="table-wrap"><table><thead><tr><th>Date</th><th>Details</th><th>Category</th><th>Paid by</th><th>Amount</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
@@ -299,10 +302,22 @@ function calculateFunding(expenses, advances){
    fromAdvance:advanceUsed,expenseFunding,unusedAdvance1:remaining1,unusedAdvance2:remaining2};
 }
 function filteredExpenses(list){
- const category=document.getElementById("historyCategory")?.value||"all";
  const fromDate=document.getElementById("historyDateFrom")?.value||"";
  const toDate=document.getElementById("historyDateTo")?.value||"";
- return list.filter(e=>(category==="all"||e.category===category)&&(!fromDate||e.date>=fromDate)&&(!toDate||e.date<=toDate));
+ const details=(document.getElementById("historyDetails")?.value||"").trim().toLowerCase();
+ const paidBy=document.getElementById("historyPaidBy")?.value||"all";
+ const minRaw=document.getElementById("historyAmountMin")?.value||"";
+ const maxRaw=document.getElementById("historyAmountMax")?.value||"";
+ const minAmount=minRaw===""?null:Number(minRaw), maxAmount=maxRaw===""?null:Number(maxRaw);
+ return list.filter(e=>{
+  const description=String(e.description||"").toLowerCase();
+  const itemNames=Array.isArray(e.items)?e.items.map(it=>String(it.name||"")).join(" ").toLowerCase():"";
+  return (!fromDate||e.date>=fromDate)&&(!toDate||e.date<=toDate)
+   &&(!details||description.includes(details)||itemNames.includes(details))
+   &&(paidBy==="all"||String(e.payer)===paidBy)
+   &&(minAmount===null||Number(e.amount)>=minAmount)
+   &&(maxAmount===null||Number(e.amount)<=maxAmount);
+ });
 }
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function render(){
@@ -311,6 +326,7 @@ function render(){
  document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;
  updateShoppingOwnerLabels();
  document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
+ document.getElementById("historyPaidBy").innerHTML=`<option value="all">Everyone</option><option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
  document.getElementById("expenseShare1Label").textContent=`${n1} share (₹)`;document.getElementById("expenseShare2Label").textContent=`${n2} share (₹)`;
  document.getElementById("advance1Label").textContent=`${n1} advance (₹)`;document.getElementById("advance2Label").textContent=`${n2} advance (₹)`;
  document.getElementById("advance1").value=Number(adv[1]||0);document.getElementById("advance2").value=Number(adv[2]||0);
@@ -396,7 +412,7 @@ function loadItemDraft(category){
  loadingItemDraft=true;
  const container=document.getElementById("itemRows");container.innerHTML="";
  if(Array.isArray(draft)&&draft.length){
-  draft.forEach(item=>{addItemRow(item.name,item.amount);const row=container.lastElementChild;if(item.name==="Others"){const other=row.querySelector(".item-other");other.value=item.other||"";other.style.display="block";other.required=true;}});
+  draft.forEach(item=>{addItemRow(item.name,item.amount);const row=container.lastElementChild;if(item.name==="Others"){const other=row.querySelector(".item-other");other.value=item.other||"";other.style.display="block";other.required=["Shopping","Groceries"].includes(category);}});
  } else addItemRow();
  loadingItemDraft=false;
  updateItemTotal();
@@ -408,9 +424,9 @@ function itemOptions(category,selected=""){
 function addItemRow(name="",amount=""){
  const category=document.getElementById("category").value;
  const row=document.createElement("div");row.className="item-row";
- row.innerHTML=`<div><select class="item-name" aria-label="Item name">${itemOptions(category,name|| (category==="Shopping"?"Shirts":"Onions"))}</select><input class="item-other" aria-label="Other item name" placeholder="Enter item name" style="display:none;margin-top:6px"></div><input class="item-amount" type="number" min="0.01" step="0.01" placeholder="Amount ₹" aria-label="Item amount" value="${safe(amount)}" required><button type="button" class="danger" aria-label="Remove item">×</button>`;
+ row.innerHTML=`<div><select class="item-name" aria-label="Item name">${itemOptions(category,name|| (category==="Shopping"?"Shirts":"Onions"))}</select><input class="item-other" aria-label="Other item name" placeholder="Enter item name" style="display:none;margin-top:6px"></div><input class="item-amount" type="number" min="0.01" step="0.01" placeholder="Amount ₹" aria-label="Item amount" value="${safe(amount)}"><button type="button" class="danger" aria-label="Remove item">×</button>`;
  const select=row.querySelector(".item-name"), other=row.querySelector(".item-other");
- function updateOther(){const isOther=select.value==="Others";other.style.display=isOther?"block":"none";other.required=isOther;if(!isOther)other.value="";updateItemTotal();}
+ function updateOther(){const isOther=select.value==="Others";other.style.display=isOther?"block":"none";other.required=isOther&&["Shopping","Groceries"].includes(document.getElementById("category").value);if(!isOther)other.value="";updateItemTotal();}
  select.addEventListener("change",updateOther);other.addEventListener("input",updateItemTotal);row.querySelector(".item-amount").addEventListener("input",updateItemTotal);
  row.querySelector("button").addEventListener("click",()=>{row.remove();if(!document.querySelector("#itemRows .item-row"))addItemRow();updateItemTotal();});
  document.getElementById("itemRows").appendChild(row);updateOther();
@@ -441,8 +457,10 @@ function refreshItemRows(){
  document.getElementById("itemPanelTitle").textContent=shopping?"Shopping item details (optional)":"Groceries items";
  document.getElementById("itemPanelHelp").textContent=shopping?"Enter one shopping expense above. Expand below only if you want a detailed list of multiple items.":"Add each grocery item and its amount. The expense total is calculated from the items.";
  document.getElementById("customSplitPanel").style.display=shopping?"none":"block";
+ document.querySelectorAll("#itemRows .item-other").forEach(input=>{input.required=(shopping||grocery)&&input.style.display!=="none";});
  document.getElementById("addItemBtn").disabled=!(shopping||grocery);
- loadItemDraft(cat);
+ if(shopping||grocery) loadItemDraft(cat);
+ else { document.getElementById("itemRows").innerHTML=""; document.getElementById("itemsTotal").textContent=money(0); }
  updateShoppingOwnerLabels();
 }
 function updateShoppingOwnerLabels(){
@@ -540,10 +558,9 @@ document.getElementById("expenseRows").addEventListener("click",e=>{const id=e.t
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
 document.getElementById("saveAdvances").addEventListener("click",()=>{const m=currentMonth();state.advances=state.advances||{};state.advances[m]={1:Math.max(0,Number(document.getElementById("advance1").value)||0),2:Math.max(0,Number(document.getElementById("advance2").value)||0)};audit("settings",`Advances saved for ${m}: ${names()[0]} ${money(state.advances[m][1])}, ${names()[1]} ${money(state.advances[m][2])}`);persist();render();alert(`Advances saved for ${m}.`);});
 document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),adv=monthAdvance(),funding=calculateFunding(ex,adv);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,fromAdvance:funding.advanceUsed,advance1:Number(adv[1]||0),advance2:Number(adv[2]||0),expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
-document.getElementById("historyCategory").addEventListener("change",render);
-document.getElementById("historyDateFrom").addEventListener("change",render);
-document.getElementById("historyDateTo").addEventListener("change",render);
-document.getElementById("clearHistoryFilters").addEventListener("click",()=>{document.getElementById("historyCategory").value="all";document.getElementById("historyDateFrom").value="";document.getElementById("historyDateTo").value="";render()});
+["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
+document.getElementById("historyDetails").addEventListener("input",render);
+document.getElementById("clearHistoryFilters").addEventListener("click",()=>{["historyDateFrom","historyDateTo","historyDetails","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).value="");document.getElementById("historyPaidBy").value="all";render()});
 document.getElementById("summaryYear").addEventListener("change",renderSummary);
 document.getElementById("auditFilter").addEventListener("change",renderAudit);
 document.querySelectorAll(".tab-button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("active",b===btn));document.querySelectorAll(".tab-panel").forEach(p=>{p.hidden=p.id!==btn.dataset.tab;p.classList.toggle("active",p.id===btn.dataset.tab)});if(btn.dataset.tab==="summaryTab")renderSummary();if(btn.dataset.tab==="auditTab")renderAudit();}));
