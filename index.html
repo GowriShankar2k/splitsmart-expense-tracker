@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart MG v1.7</title>
+<title>SplitSmart v1.7 — Expense Entry & Filters</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -41,6 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 @keyframes fadeIn{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .advance-card{margin-bottom:16px;background:linear-gradient(135deg,#fff 0%,#f5f8ff 100%)}
 .filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:end;margin:10px 0 14px}.history-filters button{align-self:end}.history-filters input,.history-filters select{min-width:0}
+ .weekly-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.weekly-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcff}.weekly-card .metric-label{font-size:11px;color:var(--muted);font-weight:700}.weekly-card .metric-value{font-size:20px;font-weight:800;margin-top:5px}.weekly-table th,.weekly-table td{padding:9px 8px;vertical-align:top}.weekly-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}@media(max-width:650px){.weekly-cards{grid-template-columns:1fr}}
 .filters label,.summary-controls label{display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px}
 .summary-controls{min-width:130px}
 .summary-metrics{margin:12px 0 18px}
@@ -167,6 +168,17 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
     </div>
     <div class="table-wrap"><table><thead><tr><th>Date</th><th>Details</th><th>Category</th><th>Paid by</th><th>Amount</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
     <div class="empty" id="emptyState">No expenses for this month yet. Add your first shared expense above.</div>
+   </section>
+   <section class="card section-gap" id="weeklySpendingSection">
+    <h2>Weekly spending planner</h2>
+    <p class="muted">Weeks run Monday to Sunday. Regular weekday spending includes Monday–Friday only and excludes Rent & bills, Petrol / travel, Shopping, and Other expenses. Saturday and Sunday are tracked separately.</p>
+    <div class="weekly-cards">
+     <div class="weekly-card"><div class="metric-label">ELIGIBLE WEEKDAY SPEND</div><div class="metric-value" id="weekdayEligibleTotal">₹0</div><div class="muted">Mon–Fri, excluding exceptional categories</div></div>
+     <div class="weekly-card"><div class="metric-label">EXCLUDED WEEKDAY EXPENSES</div><div class="metric-value" id="weekdayExcludedTotal">₹0</div><div class="muted">Rent, petrol, shopping, other</div></div>
+     <div class="weekly-card"><div class="metric-label">WEEKEND SPEND</div><div class="metric-value" id="weekendTotal">₹0</div><div class="muted">All expenses on Saturday and Sunday</div></div>
+    </div>
+    <div class="table-wrap"><table class="weekly-table"><thead><tr><th>Week (Mon–Sun)</th><th>Eligible Mon–Fri</th><th>Excluded Mon–Fri</th><th>Saturday</th><th>Sunday</th><th>Weekend total</th></tr></thead><tbody id="weeklySpendingRows"></tbody></table></div>
+    <div class="weekly-note">The weekly planner uses all expenses in the selected month, regardless of the Expense History filters. A week crossing month boundaries shows only expenses belonging to the selected month.</div>
    </section>
   </div>
   <div>
@@ -320,6 +332,31 @@ function filteredExpenses(list){
  });
 }
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function localDate(dateString){const parts=String(dateString||"").split("-").map(Number);return parts.length===3&&parts.every(Number.isFinite)?new Date(parts[0],parts[1]-1,parts[2]):null;}
+function mondayFor(date){const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d;}
+function renderWeeklySpending(expenses){
+ const excludedCategories=new Set(["Rent & bills","Petrol / travel","Shopping","Other expenses"]);
+ const weeks=new Map();let eligibleTotal=0,excludedTotal=0,weekendTotal=0;
+ for(const expense of expenses){
+  const date=localDate(expense.date);if(!date||!Number.isFinite(Number(expense.amount)))continue;
+  const monday=mondayFor(date),key=isoDate(monday);
+  if(!weeks.has(key))weeks.set(key,{monday:new Date(monday),eligible:0,excluded:0,saturday:0,sunday:0});
+  const week=weeks.get(key),amount=Math.max(0,Number(expense.amount)||0),day=date.getDay();
+  if(day===0){week.sunday+=amount;weekendTotal+=amount;}
+  else if(day===6){week.saturday+=amount;weekendTotal+=amount;}
+  else if(excludedCategories.has(String(expense.category||""))){week.excluded+=amount;excludedTotal+=amount;}
+  else {week.eligible+=amount;eligibleTotal+=amount;}
+ }
+ document.getElementById("weekdayEligibleTotal").textContent=money(eligibleTotal);
+ document.getElementById("weekdayExcludedTotal").textContent=money(excludedTotal);
+ document.getElementById("weekendTotal").textContent=money(weekendTotal);
+ const rows=[...weeks.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,w])=>{
+  const sunday=new Date(w.monday);sunday.setDate(sunday.getDate()+6);
+  const label=`${w.monday.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})} – ${sunday.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}`;
+  return `<tr><td>${label}</td><td class="amount">${money(w.eligible)}</td><td class="amount">${money(w.excluded)}</td><td class="amount">${money(w.saturday)}</td><td class="amount">${money(w.sunday)}</td><td class="amount"><b>${money(w.saturday+w.sunday)}</b></td></tr>`;
+ }).join("");
+ document.getElementById("weeklySpendingRows").innerHTML=rows||`<tr><td colspan="6" class="muted">No expenses recorded for this month yet.</td></tr>`;
+}
 function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
  const adv=monthAdvance(), funding=calculateFunding(allMonthEx,adv), contributed1=funding.contributed1, contributed2=funding.contributed2, balance=funding.balance1;
@@ -346,6 +383,7 @@ function render(){
  document.getElementById("categoryBreakdown").innerHTML=breakdown.map(x=>`<div class="cat-row"><span>${safe(x.cat)}</span><div class="bar"><span style="width:${x.total/max*100}%"></span></div><span class="cat-amount">${money(x.total)}</span></div>`).join("");
  document.getElementById("savingTarget").value=state.savingTarget??1000;document.getElementById("targetView").textContent=money(state.savingTarget);document.getElementById("spendView").textContent=money(total);
  document.getElementById("targetTip").textContent=total===0?"Log expenses to begin":total>Number(state.savingTarget)*10?"Review food and recurring costs":"Keep logging and compare with last month";
+ renderWeeklySpending(allMonthEx);
  renderTips(allMonthEx,total,breakdown,n1,n2);
  renderSummary();renderAudit();
 }
