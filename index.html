@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v1.8 — Weekly Spending Tracker</title>
+<title>SplitSmart v1.9 — Weekly Spending Tracker</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -39,7 +39,6 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 .tab-button.active{background:#fff;color:#2147b7;border-color:#dbe4ff;box-shadow:0 3px 10px rgba(33,71,183,.09)}
 .tab-panel{animation:fadeIn .18s ease}.tab-panel[hidden]{display:none!important}
 @keyframes fadeIn{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
-.advance-card{margin-bottom:16px;background:linear-gradient(135deg,#fff 0%,#f5f8ff 100%)}
 .filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:end;margin:10px 0 14px}.history-filters button{align-self:end}.history-filters input,.history-filters select{min-width:0}
  .weekly-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.weekly-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcff}.weekly-card .metric-label{font-size:11px;color:var(--muted);font-weight:700}.weekly-card .metric-value{font-size:20px;font-weight:800;margin-top:5px}.weekly-table th,.weekly-table td{padding:9px 8px;vertical-align:top}.weekly-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}@media(max-width:650px){.weekly-cards{grid-template-columns:1fr}}
 .filters label,.summary-controls label{display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px}
@@ -56,7 +55,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.8</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v1.9</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -90,7 +89,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 1.4:</b> Itemized Shopping and Groceries, custom expense splits, House advance tracking, monthly/yearly summaries, expense filters and audit history.</div>
+ <div class="notice"><b>Version 1.4:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters and audit history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="summaryTab">Monthly summary</button>
@@ -103,19 +102,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
   <div class="field"><label for="friend2">FRIEND 2</label><input id="friend2" value="Friend" maxlength="35"></div>
   <button id="saveNames" class="secondary">Save names</button>
  </div>
- <section class="card advance-card">
-  <div class="card-head"><div><h2>Monthly advances / prepaid contributions</h2><p class="muted">The House is a virtual shared wallet, not a third login. Enter each person’s contribution here; the app uses this balance before counting direct payments.</p></div><button id="saveAdvances" class="secondary">Save advances</button></div>
-  <div class="form-grid">
-   <div><label id="advance1Label" for="advance1">Friend 1 advance (₹)</label><input id="advance1" type="number" min="0" step="0.01" value="0"></div>
-   <div><label id="advance2Label" for="advance2">Friend 2 advance (₹)</label><input id="advance2" type="number" min="0" step="0.01" value="0"></div>
-  </div>
-  <p class="muted"><b>How the House fund works:</b> The month’s expenses use the available House fund first, in date order. If both friends contributed, the used amount is credited to each in proportion to their contribution. Once the fund runs out, the remaining part of each expense is credited to the person selected in “Paid by”. Unused money stays in the House fund and is not treated as an expense.</p>
- </section>
  <section class="grid">
   <div class="card"><div class="metric-label">SHARED SPEND</div><div class="metric-value" id="totalSpend">₹0</div><div class="metric-sub" id="expenseCount">0 expenses this month</div></div>
   <div class="card"><div class="metric-label">ASSIGNED SHARES (PERSON 1 / 2)</div><div class="metric-value" id="eachShare">₹0</div><div class="metric-sub">50% of shared expenses</div></div>
-  <div class="card"><div class="metric-label" id="paid1Label">CONTRIBUTION BY ME</div><div class="metric-value" id="paid1">₹0</div><div class="metric-sub" id="paid1Sub">Direct payments + used advance</div></div>
-  <div class="card"><div class="metric-label" id="paid2Label">CONTRIBUTION BY FRIEND</div><div class="metric-value" id="paid2">₹0</div><div class="metric-sub" id="paid2Sub">Direct payments + used advance</div></div>
+  <div class="card"><div class="metric-label" id="paid1Label">CONTRIBUTION BY ME</div><div class="metric-value" id="paid1">₹0</div><div class="metric-sub" id="paid1Sub">Direct payments only</div></div>
+  <div class="card"><div class="metric-label" id="paid2Label">CONTRIBUTION BY FRIEND</div><div class="metric-value" id="paid2">₹0</div><div class="metric-sub" id="paid2Sub">Direct payments only</div></div>
  </section>
  <div class="layout">
   <div>
@@ -130,7 +121,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
       </div>
       <div class="wide"><label for="description">What did you buy?</label><input id="description" maxlength="100" placeholder="e.g. Vegetables and milk" required></div>
       <div><label for="category">Category</label><select id="category"><option>Groceries</option><option>Shopping</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Rent & bills</option><option>Petrol / travel</option><option>Other expenses</option></select></div>
-      <div><label for="payer">Paid by</label><select id="payer"><option value="1">Me</option><option value="2">Friend</option><option value="3">Shared advance</option></select></div>
+      <div><label for="payer">Paid by</label><select id="payer"><option value="1">Me</option><option value="2">Friend</option></select></div>
       <div class="wide item-panel" id="itemPanel">
        <h3 id="itemPanelTitle" style="font-size:14px;margin:0 0 4px">Groceries items</h3>
        <p class="muted" id="itemPanelHelp">Add each grocery item and its amount. The expense total is calculated from the items.</p>
@@ -161,7 +152,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
      <div><label for="historyDateFrom">DATE FROM</label><input id="historyDateFrom" type="date"></div>
      <div><label for="historyDateTo">DATE TO</label><input id="historyDateTo" type="date"></div>
      <div><label for="historyDetails">DETAILS</label><input id="historyDetails" type="search" placeholder="Search description or item"></div>
-     <div><label for="historyPaidBy">PAID BY</label><select id="historyPaidBy"><option value="all">Everyone</option><option value="1">Friend 1</option><option value="2">Friend 2</option><option value="3">Shared advance</option></select></div>
+     <div><label for="historyPaidBy">PAID BY</label><select id="historyPaidBy"><option value="all">Everyone</option><option value="1">Friend 1</option><option value="2">Friend 2</option></select></div>
      <div><label for="historyAmountMin">MIN AMOUNT (₹)</label><input id="historyAmountMin" type="number" min="0" step="0.01" placeholder="Any"></div>
      <div><label for="historyAmountMax">MAX AMOUNT (₹)</label><input id="historyAmountMax" type="number" min="0" step="0.01" placeholder="Any"></div>
      <button id="clearHistoryFilters" class="secondary">Clear filters</button>
@@ -215,7 +206,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
     <div class="card metric-card"><div class="metric-label" id="yearFriend2Label">PAID BY FRIEND 2</div><div class="metric-value" id="yearPaid2">₹0</div></div>
     <div class="card metric-card"><div class="metric-label">AVERAGE / MONTH</div><div class="metric-value" id="yearAverage">₹0</div></div>
    </div>
-   <div class="table-wrap"><table><thead><tr><th>Month</th><th>Total spent</th><th>Friend 1 contribution</th><th>Friend 2 contribution</th><th>Friend 1 share</th><th>Friend 2 share</th><th>House fund used</th><th>Expenses</th></tr></thead><tbody id="monthlySummaryRows"></tbody></table></div>
+   <div class="table-wrap"><table><thead><tr><th>Month</th><th>Total spent</th><th>Friend 1 contribution</th><th>Friend 2 contribution</th><th>Friend 1 share</th><th>Friend 2 share</th><th>Expenses</th></tr></thead><tbody id="monthlySummaryRows"></tbody></table></div>
   </div>
   <div class="two-col">
    <section class="card"><h2>Yearly category breakdown</h2><div id="yearCategoryBreakdown" class="category-list"></div></section>
@@ -260,14 +251,13 @@ const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",ma
 const today=new Date();
 const isoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const monthOf=d=>String(d||"").slice(0,7);
-let state={friend1:"Me",friend2:"Friend",expenses:[],savingTarget:1000,advances:{},monthlySnapshots:{},audit:[]};
+let state={friend1:"Me",friend2:"Friend",expenses:[],savingTarget:1000,monthlySnapshots:{},audit:[]};
 let currentUserLabel="Unknown user";
-function monthAdvance(month=currentMonth()){return state.advances?.[month]||{1:0,2:0};}
 function audit(action,details){
  const entry={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),at:Date.now(),who:currentUserLabel,action,details:String(details||"")};
  state.audit=Array.isArray(state.audit)?state.audit:[];state.audit.unshift(entry);state.audit=state.audit.slice(0,500);
 }
-function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];}catch(e){}}
+function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};delete state.advances;if(!Array.isArray(state.expenses))state.expenses=[];}catch(e){}}
 function persist(){
   localStorage.setItem(KEY,JSON.stringify(state));
   if(cloudReady && !remoteUpdate){
@@ -279,39 +269,21 @@ function names(){return [state.friend1||"Friend 1",state.friend2||"Friend 2"];}
 function currentMonth(){return document.getElementById("monthFilter").value||monthOf(isoDate(today));}
 function currentExpenses(){return state.expenses.filter(e=>monthOf(e.date)===currentMonth()).sort((a,b)=>b.date.localeCompare(a.date)||b.created-b.created);}
 function sum(list){return list.reduce((a,e)=>a+Number(e.amount||0),0);}
-// Automatically apply monthly advances to expenses first, then credit any remaining
-// expense amount to the payer recorded on that expense. Advance credits are split
-// between the two contributors in proportion to the advances they supplied.
-function calculateFunding(expenses, advances){
- // House advances fund expenses first, oldest expense first. Actual contributions
- // are tracked separately from each person's allocated share of the expenses.
- const ordered=[...expenses].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||Number(a.created||0)-Number(b.created||0));
- const total=sum(ordered), adv1=Math.max(0,Number(advances?.[1]||0)), adv2=Math.max(0,Number(advances?.[2]||0));
- let remaining1=adv1, remaining2=adv2, advanceUsed=0, direct1=0, direct2=0, share1=0, share2=0;
+// Payments are credited only to the friend who actually paid.
+function calculateFunding(expenses){
+ let direct1=0,direct2=0,share1=0,share2=0;
  const expenseFunding={};
- for(const expense of ordered){
-   const amount=Math.max(0,Number(expense.amount||0));
-   const hasCustom=Number.isFinite(Number(expense.share1))&&Number.isFinite(Number(expense.share2))&&expense.share1!==null&&expense.share2!==null&&expense.share1!==undefined&&expense.share2!==undefined&&Math.abs((Number(expense.share1)+Number(expense.share2))-amount)<0.011;
-   const allocated1=hasCustom?Math.max(0,Number(expense.share1)):amount/2;
-   const allocated2=hasCustom?Math.max(0,Number(expense.share2)):amount-allocated1;
-   share1+=allocated1; share2+=allocated2;
-   const available=remaining1+remaining2;
-   const used=Math.min(amount,available);
-   const used1=available>0 ? Math.min(remaining1, used*remaining1/available) : 0;
-   const used2=Math.min(remaining2, Math.max(0,used-used1));
-   remaining1=Math.max(0,remaining1-used1); remaining2=Math.max(0,remaining2-used2);
-   advanceUsed+=used;
-   const direct=Math.max(0,amount-used), payer=Number(expense.payer);
-   if(payer===2) direct2+=direct;
-   else if(payer===3){ direct1+=direct/2; direct2+=direct/2; }
-   else direct1+=direct;
-   expenseFunding[expense.id]={houseUsed:used,houseFrom1:used1,houseFrom2:used2,direct,payer,share1:allocated1,share2:allocated2};
+ for(const e of expenses){
+  const amount=Math.max(0,Number(e.amount)||0);
+  const custom=e.share1!=null&&e.share2!=null&&Number.isFinite(Number(e.share1))&&Number.isFinite(Number(e.share2))&&Math.abs(Number(e.share1)+Number(e.share2)-amount)<0.011;
+  const s1=custom?Number(e.share1):amount/2,s2=custom?Number(e.share2):amount-s1;
+  share1+=s1;share2+=s2;
+  // Legacy shared-advance entries are treated as equally paid until reassigned.
+  const payer=Number(e.payer);
+  if(payer===2)direct2+=amount;else if(payer===3){direct1+=amount/2;direct2+=amount/2;}else direct1+=amount;
+  expenseFunding[e.id]={direct:amount,payer,share1:s1,share2:s2};
  }
- const advanceCredit1=adv1-remaining1, advanceCredit2=adv2-remaining2;
- return {total, share1, share2, advanceTotal:adv1+adv2, advanceUsed, advanceCredit1, advanceCredit2,
-   direct1,direct2,contributed1:direct1+advanceCredit1,contributed2:direct2+advanceCredit2,
-   balance1:direct1+advanceCredit1-share1,balance2:direct2+advanceCredit2-share2,
-   fromAdvance:advanceUsed,expenseFunding,unusedAdvance1:remaining1,unusedAdvance2:remaining2};
+ return {total:sum(expenses),share1,share2,direct1,direct2,contributed1:direct1,contributed2:direct2,balance1:direct1-share1,balance2:direct2-share2,expenseFunding};
 }
 function filteredExpenses(list){
  const fromDate=document.getElementById("historyDateFrom")?.value||"";
@@ -359,24 +331,21 @@ function renderWeeklySpending(expenses){
 }
 function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
- const adv=monthAdvance(), funding=calculateFunding(allMonthEx,adv), contributed1=funding.contributed1, contributed2=funding.contributed2, balance=funding.balance1;
+ const funding=calculateFunding(allMonthEx), contributed1=funding.contributed1, contributed2=funding.contributed2, balance=funding.balance1;
  document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;
  updateShoppingOwnerLabels();
- document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
- document.getElementById("historyPaidBy").innerHTML=`<option value="all">Everyone</option><option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option><option value="3">Shared advance</option>`;
+ document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option>`;
+ document.getElementById("historyPaidBy").innerHTML=`<option value="all">Everyone</option><option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option>`;
  document.getElementById("expenseShare1Label").textContent=`${n1} share (₹)`;document.getElementById("expenseShare2Label").textContent=`${n2} share (₹)`;
- document.getElementById("advance1Label").textContent=`${n1} advance (₹)`;document.getElementById("advance2Label").textContent=`${n2} advance (₹)`;
- document.getElementById("advance1").value=Number(adv[1]||0);document.getElementById("advance2").value=Number(adv[2]||0);
  document.getElementById("totalSpend").textContent=money(total);document.getElementById("expenseCount").textContent=`${ex.length} expense${ex.length===1?"":"s"} this month`;
  document.getElementById("eachShare").textContent=`${money(funding.share1)} / ${money(funding.share2)}`;document.querySelector(".grid .card:nth-child(2) .metric-sub").textContent=`${n1}: ${money(funding.share1)} · ${n2}: ${money(funding.share2)}`;document.getElementById("paid1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("paid2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
- document.getElementById("paid1").textContent=money(contributed1);document.getElementById("paid2").textContent=money(contributed2);document.getElementById("paid1Sub").textContent=`${money(funding.direct1)} direct + ${money(funding.advanceCredit1)} House fund`;document.getElementById("paid2Sub").textContent=`${money(funding.direct2)} direct + ${money(funding.advanceCredit2)} House fund`;
+ document.getElementById("paid1").textContent=money(contributed1);document.getElementById("paid2").textContent=money(contributed2);document.getElementById("paid1Sub").textContent="Direct payments only";document.getElementById("paid2Sub").textContent="Direct payments only";
  document.getElementById("sTotal").textContent=money(total);document.getElementById("sShare1Label").textContent=`${n1} assigned share`;document.getElementById("sShare2Label").textContent=`${n2} assigned share`;document.getElementById("sShare1").textContent=money(funding.share1);document.getElementById("sShare2").textContent=money(funding.share2);document.getElementById("sPaid1Label").textContent=`${n1} contributed`;document.getElementById("sPaid2Label").textContent=`${n2} contributed`;document.getElementById("sPaid1").textContent=money(contributed1);document.getElementById("sPaid2").textContent=money(contributed2);
- document.getElementById("advance1").value=Number(adv[1]||0);document.getElementById("advance2").value=Number(adv[2]||0);
  let settle="No settlement needed",sub="You are both square for this month.";
  if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s contributions exceed their assigned share of expenses.`}
  else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s contributions exceed their assigned share of expenses.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
- const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{houseUsed:0,direct:Number(e.amount)||0,payer:e.payer};let source;if(f.houseUsed>0&&f.direct>0)source=f.payer===3?`House ${money(f.houseUsed)} + shared remainder ${money(f.direct)}`:`House ${money(f.houseUsed)} + ${safe(f.payer===2?n2:n1)} ${money(f.direct)}`;else if(f.houseUsed>0)source=`House fund ${money(f.houseUsed)}`;else if(f.payer===3)source=`House fund / shared remainder ${money(f.direct)}`;else source=safe(f.payer===2?n2:n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<details class="history-items"><summary>View ${e.items.length} item${e.items.length===1?"":"s"}</summary><ul>${e.items.map(it=>`<li>${safe(it.name)} — ${money(it.amount)}</li>`).join("")}</ul></details>`:"";const ownerInfo=e.category==="Shopping"?`<div class="shopping-owner-note">Shopping for: ${safe((Number(e.shoppingOwner)||1)===2?n2:n1)}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${ownerInfo}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></td></tr>`}).join("");
+ const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{share1:Number(e.amount)/2,share2:Number(e.amount)/2};const source=Number(e.payer)===2?safe(n2):Number(e.payer)===3?"Legacy shared payment (50/50)":safe(n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<details class="history-items"><summary>View ${e.items.length} item${e.items.length===1?"":"s"}</summary><ul>${e.items.map(it=>`<li>${safe(it.name)} — ${money(it.amount)}</li>`).join("")}</ul></details>`:"";const ownerInfo=e.category==="Shopping"?`<div class="shopping-owner-note">Shopping for: ${safe((Number(e.shoppingOwner)||1)===2?n2:n1)}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${ownerInfo}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></td></tr>`}).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
  const breakdown=CATEGORIES.map(c=>({cat:c,total:sum(allMonthEx.filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total);
  const max=Math.max(1,...breakdown.map(x=>x.total));
@@ -396,15 +365,15 @@ function renderSummary(){
  yearEl.value=years.has(prior)?prior:String(today.getFullYear());
  const year=yearEl.value,[n1,n2]=names(),list=state.expenses.filter(e=>String(e.date||"").startsWith(year));
  const total=sum(list),yearFunding=list.reduce((acc,e)=>{const m=monthOf(e.date);(acc[m]||(acc[m]=[])).push(e);return acc;},{});
- const yearlyFunding=Object.entries(yearFunding).reduce((acc,[m,monthEx])=>{const f=calculateFunding(monthEx,state.advances?.[m]||{});acc.paid1+=f.contributed1;acc.paid2+=f.contributed2;acc.share1+=f.share1;acc.share2+=f.share2;acc.fromAdvance+=f.advanceUsed;return acc;},{paid1:0,paid2:0,share1:0,share2:0,fromAdvance:0});
- const paid1=yearlyFunding.paid1,paid2=yearlyFunding.paid2,fromAdvance=yearlyFunding.fromAdvance;
+ const yearlyFunding=Object.values(yearFunding).reduce((acc,monthEx)=>{const f=calculateFunding(monthEx);acc.paid1+=f.contributed1;acc.paid2+=f.contributed2;acc.share1+=f.share1;acc.share2+=f.share2;return acc;},{paid1:0,paid2:0,share1:0,share2:0});
+ const paid1=yearlyFunding.paid1,paid2=yearlyFunding.paid2;
  document.getElementById("yearTotal").textContent=money(total);document.getElementById("yearFriend1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("yearFriend2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
  document.getElementById("yearPaid1").textContent=money(paid1);document.getElementById("yearPaid2").textContent=money(paid2);document.getElementById("yearAverage").textContent=money(total/12);
  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
- document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),adv=state.advances?.[m]||{1:0,2:0},f=calculateFunding(ex,adv);return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(f.contributed1)}</td><td>${money(f.contributed2)}</td><td>${money(f.share1)}</td><td>${money(f.share2)}</td><td>${money(f.advanceUsed)} <span class="muted">used</span></td><td>${ex.length}</td></tr>`}).join("");
+ document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),f=calculateFunding(ex);return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(f.contributed1)}</td><td>${money(f.contributed2)}</td><td>${money(f.share1)}</td><td>${money(f.share2)}</td><td>${ex.length}</td></tr>`}).join("");
  const cats=CATEGORIES.map(cat=>({cat,total:sum(list.filter(e=>e.category===cat))})).sort((a,b)=>b.total-a.total),max=Math.max(1,...cats.map(c=>c.total));
  document.getElementById("yearCategoryBreakdown").innerHTML=cats.map(c=>`<div class="cat-row"><span>${safe(c.cat)}</span><div class="bar"><span style="width:${c.total/max*100}%"></span></div><span class="cat-amount">${money(c.total)}</span></div>`).join("");
- document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>House fund used</span><b>${money(fromAdvance)}</b></div><div class="summary-row"><span>Monthly snapshots saved</span><b>${Object.keys(state.monthlySnapshots||{}).filter(m=>m.startsWith(year)).length} / 12</b></div>`;
+ document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>Monthly snapshots saved</span><b>${Object.keys(state.monthlySnapshots||{}).filter(m=>m.startsWith(year)).length} / 12</b></div>`;
 }
 function renderAudit(){
  const body=document.getElementById("auditRows");if(!body)return;
@@ -594,8 +563,7 @@ document.getElementById("expenseForm").addEventListener("submit",e=>{
 });
 document.getElementById("expenseRows").addEventListener("click",e=>{const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
-document.getElementById("saveAdvances").addEventListener("click",()=>{const m=currentMonth();state.advances=state.advances||{};state.advances[m]={1:Math.max(0,Number(document.getElementById("advance1").value)||0),2:Math.max(0,Number(document.getElementById("advance2").value)||0)};audit("settings",`Advances saved for ${m}: ${names()[0]} ${money(state.advances[m][1])}, ${names()[1]} ${money(state.advances[m][2])}`);persist();render();alert(`Advances saved for ${m}.`);});
-document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),adv=monthAdvance(),funding=calculateFunding(ex,adv);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,fromAdvance:funding.advanceUsed,advance1:Number(adv[1]||0),advance2:Number(adv[2]||0),expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
+document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
 ["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("historyDetails").addEventListener("input",render);
 document.getElementById("clearHistoryFilters").addEventListener("click",()=>{["historyDateFrom","historyDateTo","historyDetails","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).value="");document.getElementById("historyPaidBy").value="all";render()});
@@ -607,7 +575,7 @@ document.getElementById("savingTarget").addEventListener("change",e=>{state.savi
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});downloadBlob(blob,`splitsmart-backup-${isoDate(today)}.json`)});
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
 document.getElementById("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const parsed=JSON.parse(await f.text());if(!Array.isArray(parsed.expenses))throw Error("Invalid file");if(!confirm("Import will replace the expenses currently saved in this browser. Continue?"))return;state={...state,...parsed};persist();render();alert("Backup imported successfully.");}catch(err){alert("Could not import that file. Please choose a SplitSmart JSON backup.")}e.target.value=""});
-document.getElementById("csvBtn").addEventListener("click",()=>{const [n1,n2]=names(),ex=currentExpenses(),funding=calculateFunding(ex,monthAdvance());const data=[["Date","Description","Category","Amount INR","Funding source"],...ex.map(e=>{const f=funding.expenseFunding[e.id]||{houseUsed:0,direct:Number(e.amount)||0,payer:e.payer};let source=f.houseUsed>0&&f.direct>0?(f.payer===3?`House ${money(f.houseUsed)} + shared remainder ${money(f.direct)}`:`House ${money(f.houseUsed)} + ${f.payer===2?n2:n1} ${money(f.direct)}`):f.houseUsed>0?`House fund ${money(f.houseUsed)}`:f.payer===3?`House fund / shared remainder ${money(f.direct)}`:f.payer===2?n2:n1;return [e.date,e.description,e.category,e.amount,source]})];const csv=data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");downloadBlob(new Blob([csv],{type:"text/csv;charset=utf-8"}),`expenses-${currentMonth()}.csv`)});
+document.getElementById("csvBtn").addEventListener("click",()=>{const [n1,n2]=names(),ex=currentExpenses();const data=[["Date","Description","Category","Amount INR","Paid by"],...ex.map(e=>[e.date,e.description,e.category,e.amount,Number(e.payer)===2?n2:Number(e.payer)===3?"Legacy shared payment":n1])];const csv=data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");downloadBlob(new Blob([csv],{type:"text/csv;charset=utf-8"}),`expenses-${currentMonth()}.csv`)});
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
 // Simple calculator: only evaluates numbers, parentheses and basic arithmetic operators.
@@ -660,7 +628,7 @@ function showSignedIn(user){
  if(unsubscribeShared)unsubscribeShared();
  unsubscribeShared=sharedDoc.onSnapshot(doc=>{
    cloudReady=doc.exists;
-   if(doc.exists){remoteUpdate=true;const data=doc.data();state={friend1:data.friend1||"Me",friend2:data.friend2||"Friend",expenses:Array.isArray(data.expenses)?data.expenses:[],savingTarget:Number(data.savingTarget??1000),advances:data.advances&&typeof data.advances==="object"?data.advances:{},monthlySnapshots:data.monthlySnapshots&&typeof data.monthlySnapshots==="object"?data.monthlySnapshots:{},audit:Array.isArray(data.audit)?data.audit:[]};localStorage.setItem(KEY,JSON.stringify(state));remoteUpdate=false;
+   if(doc.exists){remoteUpdate=true;const data=doc.data();state={friend1:data.friend1||"Me",friend2:data.friend2||"Friend",expenses:Array.isArray(data.expenses)?data.expenses:[],savingTarget:Number(data.savingTarget??1000),monthlySnapshots:data.monthlySnapshots&&typeof data.monthlySnapshots==="object"?data.monthlySnapshots:{},audit:Array.isArray(data.audit)?data.audit:[]};localStorage.setItem(KEY,JSON.stringify(state));remoteUpdate=false;
     if(lastAuditedUid!==user.uid){lastAuditedUid=user.uid;currentUserLabel=user.email||user.uid;audit("login",`Signed in to SplitSmart (${currentUserLabel})`);persist();}
    }
    else { setAuthStatus("Signed in, but shared household data has not been initialized. Ask the owner to configure the secure Firestore rules and initialize the shared document."); }
