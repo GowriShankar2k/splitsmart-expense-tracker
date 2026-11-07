@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.2 — Expense Management MG</title>
+<title>SplitSmart v2.2 — MG Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -129,7 +129,7 @@ main{width:100%}
   .item-row{grid-template-columns:1fr}
 }
 
-</style>
+.settlement-modal{position:fixed;inset:0;background:rgba(15,23,42,.48);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.settlement-modal[hidden]{display:none}.settlement-modal-card{width:min(520px,100%);background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(15,23,42,.22)}.settlement-modal-card h3{margin:0 0 6px}.settlement-modal-grid{display:grid;gap:10px;margin-top:14px}.settlement-kpi{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;background:#f6f8fc;border:1px solid var(--line);border-radius:10px}.settlement-kpi span{color:var(--muted)}.settlement-kpi strong{font-size:16px}.settlement-status{font-weight:750}.settlement-status.partial{color:#9a6700}.settlement-status.full{color:#147a53}</style>
 </head>
 <body>
 <header>
@@ -240,7 +240,7 @@ main{width:100%}
      <div class="summary-row"><span id="sPaid1Label">Me contributed</span><b id="sPaid1">₹0</b></div>
      <div class="summary-row"><span id="sPaid2Label">Friend paid</span><b id="sPaid2">₹0</b></div>
     </div>
-    <div class="settlement"><span class="muted">SETTLEMENT</span><strong id="settlementText">No settlement needed</strong><div class="muted" id="settlementSub">When expenses are added, we'll calculate the difference.</div><div class="submit-row"><button type="button" id="markSettledBtn" class="secondary small-btn">Mark as settled</button><span id="settledStatus" class="muted"></span></div></div>
+    <div class="settlement"><span class="muted">SETTLEMENT</span><strong id="settlementText">No settlement needed</strong><div class="muted" id="settlementSub">When expenses are added, we'll calculate the difference.</div><div id="settlementPaymentSummary" style="display:none;margin-top:12px"><div class="summary-list"><div class="summary-row"><span>Full settlement amount</span><b id="settlementDueAmount">₹0</b></div><div class="summary-row"><span>Money settled</span><b id="settlementPaidAmount">₹0</b></div><div class="summary-row"><span>Remaining to be settled</span><b id="settlementRemainingAmount">₹0</b></div></div></div><div class="submit-row"><button type="button" id="markSettledBtn" class="secondary small-btn">Record payment</button><span id="settledStatus" class="muted"></span></div></div>
    </section>
    <section class="card section-gap"><h2>Spending by category</h2><div class="category-list" id="categoryBreakdown"></div></section>
   </div>
@@ -303,8 +303,8 @@ main{width:100%}
  </section>
  <section id="settlementHistoryTab" class="tab-panel" hidden>
   <section class="card">
-   <div class="card-head"><div><h2>Settlement history</h2><p class="muted">Confirmed month-end settlements are saved as fixed snapshots and will not change when new expenses are added later.</p></div></div>
-   <div class="table-wrap"><table><thead><tr><th>Settlement date</th><th>Month</th><th>Total expenses</th><th>Assigned shares</th><th>Contributed</th><th>Settlement</th><th>Status</th></tr></thead><tbody id="settlementHistoryRows"></tbody></table></div>
+   <div class="card-head"><div><h2>Settlement history</h2><p class="muted">Month-end settlements are saved as fixed snapshots. You can record multiple payments until the remaining balance reaches ₹0.</p></div></div>
+   <div class="table-wrap"><table><thead><tr><th>Settlement date</th><th>Month</th><th>Total expenses</th><th>Assigned shares</th><th>Contributed</th><th>Settlement / payments</th><th>Status</th></tr></thead><tbody id="settlementHistoryRows"></tbody></table></div>
    <div class="empty" id="settlementHistoryEmpty" hidden>No settlements have been marked as settled yet.</div>
   </section>
 </section>
@@ -353,7 +353,7 @@ function audit(action,details){
  const entry={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),at:Date.now(),who:currentUserLabel,action,details:String(details||"")};
  state.audit=Array.isArray(state.audit)?state.audit:[];state.audit.unshift(entry);state.audit=state.audit.slice(0,500);
 }
-function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];if(!Array.isArray(state.settlementHistory))state.settlementHistory=[];}catch(e){}}
+function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];if(!Array.isArray(state.settlementHistory))state.settlementHistory=[];state.settlementHistory=state.settlementHistory.map(r=>{if(r.dueAmount===undefined)r.dueAmount=Math.abs(Number(r.balance||0));if(r.paidAmount===undefined)r.paidAmount=Number(r.dueAmount||0);if(r.remainingAmount===undefined)r.remainingAmount=Math.max(0,Number(r.dueAmount||0)-Number(r.paidAmount||0));if(r.status===undefined)r.status=r.remainingAmount<=0.005?"Fully settled":"Partially settled";if(r.createdAt===undefined)r.createdAt=Number(r.settledAt||Date.now());if(!Array.isArray(r.payments)&&Number(r.paidAmount||0)>0)r.payments=[{id:"legacy-"+(r.id||Date.now()),date:new Date(r.settledAt||Date.now()).toISOString().slice(0,10),at:Number(r.settledAt||Date.now()),amount:Number(r.paidAmount||0),recordedBy:r.settledBy||"Unknown"}];return r;});}catch(e){}}
 function persist(){
   localStorage.setItem(KEY,JSON.stringify(state));
   if(cloudReady && !remoteUpdate){
@@ -439,9 +439,17 @@ function render(){
  else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s contributions exceed their assigned share of expenses.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
  const settlementRecords=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- const currentSettled=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
- const markBtn=document.getElementById("markSettledBtn"); if(markBtn){markBtn.disabled=total<=0;markBtn.textContent=currentSettled.length?"Mark as settled again":"Mark as settled";}
- const statusEl=document.getElementById("settledStatus"); if(statusEl){statusEl.innerHTML=currentSettled.length?`<span class="settled-badge">✓ Settled ${new Date(currentSettled[0].settledAt).toLocaleDateString("en-IN")}</span>`:"";}
+ const currentRecords=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.createdAt||b.settledAt||0)-Number(a.createdAt||a.settledAt||0));
+ const currentSettlement=currentRecords[0]||null;
+ const currentDue=currentSettlement?Number(currentSettlement.dueAmount??Math.abs(Number(currentSettlement.balance||0))):Math.abs(Number(funding.balance1||0));
+ const currentPaid=currentSettlement?Number(currentSettlement.paidAmount||0):0;
+ const currentRemaining=Math.max(0,currentDue-currentPaid);
+ const markBtn=document.getElementById("markSettledBtn");
+ if(markBtn){markBtn.disabled=total<=0 || (!currentSettlement && currentDue<=0.005) || (currentSettlement && currentRemaining<=0.005 && Math.abs(Number(currentSettlement.total||0)-Number(total||0))<0.005);markBtn.textContent=currentSettlement&&currentRemaining<=0.005&&Math.abs(Number(currentSettlement.total||0)-Number(total||0))<0.005?"Fully settled":"Record payment";}
+ const statusEl=document.getElementById("settledStatus");
+ if(statusEl){if(currentSettlement){const status=currentRemaining<=0.005?"full":"partial";statusEl.innerHTML=`<span class="settlement-status ${status}">${status==="full"?"✓ Fully settled":"◐ Partially settled"}</span>`;}else statusEl.textContent="";}
+ const paymentSummary=document.getElementById("settlementPaymentSummary");
+ if(paymentSummary){paymentSummary.style.display=(currentSettlement||currentDue>0.005)?"block":"none";document.getElementById("settlementDueAmount").textContent=money(currentDue);document.getElementById("settlementPaidAmount").textContent=money(currentPaid);document.getElementById("settlementRemainingAmount").textContent=money(currentRemaining);}
  renderSettlementHistory();
  const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{payer:e.payer,share1:Number(e.amount)/2,share2:Number(e.amount)/2};const source=f.payer===2?safe(n2):f.payer===3?"Shared payment":safe(n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<details class="history-items"><summary>View ${e.items.length} item${e.items.length===1?"":"s"}</summary><ul>${e.items.map(it=>`<li>${safe(it.name)} — ${money(it.amount)}</li>`).join("")}</ul></details>`:"";const ownerInfo=e.category==="Shopping"?`<div class="shopping-owner-note">Shopping for: ${safe((Number(e.shoppingOwner)||1)===2?n2:n1)}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${ownerInfo}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary small-btn" data-edit="${e.id}" aria-label="Edit expense">Edit</button><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></div></td></tr>`}).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
@@ -472,13 +480,11 @@ function renderSummary(){
  document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>Settlements recorded</span><b>${(state.settlementHistory||[]).filter(r=>String(r.month||"").startsWith(year)).length}</b></div>`;
 }
 function renderSettlementHistory(){
- const body=document.getElementById("settlementHistoryRows"); if(!body)return;
- const rows=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).slice().sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
+ const body=document.getElementById("settlementHistoryRows");if(!body)return;
+ const rows=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).slice().sort((a,b)=>Number(b.createdAt||b.settledAt||0)-Number(a.createdAt||a.settledAt||0));
  body.innerHTML=rows.map(r=>{
-   const n1=r.friend1||names()[0], n2=r.friend2||names()[1];
-   const payer=r.balance>0?n2:n1, receiver=r.balance>0?n1:n2, amount=Math.abs(Number(r.balance||0));
-   const settlement=amount>0.005?`${safe(payer)} pays ${safe(receiver)} ${money(amount)}`:`No payment needed`;
-   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b></td><td><span class="settled-badge">✓ Settled</span><div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td></tr>`;
+  const n1=r.friend1||names()[0],n2=r.friend2||names()[1],balance=Number(r.balance||0),payer=balance>0?n2:n1,receiver=balance>0?n1:n2,direction=Math.abs(balance),due=Number(r.dueAmount??direction),paid=Number(r.paidAmount||0),remaining=Math.max(0,due-paid),status=remaining<=0.005?"full":"partial",settlement=due>0.005?`${safe(payer)} pays ${safe(receiver)} ${money(due)}`:`No payment needed`,count=Array.isArray(r.payments)?r.payments.length:(paid>0?1:0);
+  return `<tr><td>${new Date(r.createdAt||r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b><div class="settlement-history-meta">Paid ${money(paid)} · Remaining ${money(remaining)} · ${count} payment${count===1?"":"s"}</div></td><td><span class="settled-badge">${status==="full"?"✓ Fully settled":"◐ Partially settled"}</span><div class="settlement-history-meta">by ${safe(r.settledBy||r.recordedBy||"Unknown")}</div></td></tr>`;
  }).join("");
  document.getElementById("settlementHistoryEmpty").hidden=rows.length>0;
 }
@@ -622,15 +628,25 @@ function loadExpenseForEdit(id){const expense=state.expenses.find(x=>x.id===id);
 document.getElementById("addAnotherExpenseBtn").addEventListener("click",()=>{const date=document.getElementById("date").value||isoDate(today);editingExpenseId=null;document.getElementById("expenseSubmitBtn").textContent="Save expense";document.getElementById("addAnotherExpenseBtn").style.display="none";document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("category").value="Groceries";document.getElementById("payer").value="1";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";document.getElementById("date").value=date;refreshItemRows();document.getElementById("expenseForm").scrollIntoView({behavior:"smooth",block:"start"});});
 document.getElementById("expenseRows").addEventListener("click",e=>{const editId=e.target.dataset.edit;if(editId){loadExpenseForEdit(editId);return;}const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
-document.getElementById("markSettledBtn").addEventListener("click",()=>{
- const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex); if(!ex.length){alert("There are no expenses to settle for this month.");return;}
- const existing=(state.settlementHistory||[]).filter(r=>r.month===m);
- const message=existing.length?`A settlement for ${m} already exists. This will create a new settlement record using the current month totals. Continue?`:`Mark the ${m} settlement as settled?\n\n${funding.balance1>0.005?`${names()[1]} pays ${names()[0]} ${money(funding.balance1)}`:funding.balance1<-0.005?`${names()[0]} pays ${names()[1]} ${money(-funding.balance1)}`:`No payment is needed`}`;
- if(!confirm(message))return;
- state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,expenseCount:ex.length,expenseIds:ex.map(e=>e.id)});
- audit("settle-month",`Settled ${m}: ${money(funding.total)} total; balance ${money(Math.abs(funding.balance1))}`);
- persist();render();alert(`Settlement for ${m} has been recorded.`);
+function openSettlementPaymentModal(){
+ const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);if(!ex.length){alert("There are no expenses to settle for this month.");return;}
+ const records=(state.settlementHistory||[]).filter(r=>r.month===m).sort((a,b)=>Number(b.createdAt||b.settledAt||0)-Number(a.createdAt||a.settledAt||0));
+ let record=records[0]||null;const calculatedDue=Math.abs(Number(funding.balance1||0));
+ if(record&&Number(record.paidAmount||0)>=Number(record.dueAmount??calculatedDue)-0.005&&Math.abs(Number(record.total||0)-Number(funding.total||0))>0.005)record=null;
+ if(!record){if(calculatedDue<=0.005){alert("There is no settlement amount due for this month.");return;}record={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,createdAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,dueAmount:calculatedDue,paidAmount:0,remainingAmount:calculatedDue,status:"Partially settled",payments:[],expenseCount:ex.length,expenseIds:ex.map(e=>e.id)};}
+ const due=Number(record.dueAmount||0),paid=Number(record.paidAmount||0),remaining=Math.max(0,due-paid);if(remaining<=0.005){alert("This settlement is already fully settled.");return;}
+ settlementPaymentRecord=record;const payer=Number(record.balance||0)>0?(record.friend2||names()[1]):(record.friend1||names()[0]),receiver=Number(record.balance||0)>0?(record.friend1||names()[0]):(record.friend2||names()[1]);
+ document.getElementById("settlementModalDirection").textContent=`${payer} pays ${receiver}. Enter the amount actually paid now.`;document.getElementById("modalDue").textContent=money(due);document.getElementById("modalPaid").textContent=money(paid);document.getElementById("modalRemaining").textContent=money(remaining);const input=document.getElementById("settlementPaymentAmount");input.value="";input.max=remaining.toFixed(2);document.getElementById("settlementModal").hidden=false;setTimeout(()=>input.focus(),50);
+}
+let settlementPaymentRecord=null;
+document.getElementById("markSettledBtn").addEventListener("click",openSettlementPaymentModal);
+document.getElementById("settlementFullAmountBtn").addEventListener("click",()=>{const remaining=Math.max(0,Number(settlementPaymentRecord?.dueAmount||0)-Number(settlementPaymentRecord?.paidAmount||0));document.getElementById("settlementPaymentAmount").value=remaining.toFixed(2);});
+document.getElementById("cancelSettlementPaymentBtn").addEventListener("click",()=>{document.getElementById("settlementModal").hidden=true;settlementPaymentRecord=null;});
+document.getElementById("saveSettlementPaymentBtn").addEventListener("click",()=>{
+ if(!settlementPaymentRecord)return;const amount=Number(document.getElementById("settlementPaymentAmount").value),due=Number(settlementPaymentRecord.dueAmount||0),paid=Number(settlementPaymentRecord.paidAmount||0),remaining=Math.max(0,due-paid);
+ if(!Number.isFinite(amount)||amount<=0){alert("Enter an amount greater than ₹0.");return;}if(amount>remaining+0.005){alert(`Amount cannot exceed the remaining settlement of ${money(remaining)}.`);return;}
+ settlementPaymentRecord.payments=Array.isArray(settlementPaymentRecord.payments)?settlementPaymentRecord.payments:[];settlementPaymentRecord.payments.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:isoDate(today),at:Date.now(),amount,recordedBy:currentUserLabel});settlementPaymentRecord.paidAmount=paid+amount;settlementPaymentRecord.remainingAmount=Math.max(0,due-settlementPaymentRecord.paidAmount);settlementPaymentRecord.status=settlementPaymentRecord.remainingAmount<=0.005?"Fully settled":"Partially settled";settlementPaymentRecord.lastPaymentAt=Date.now();
+ if(!state.settlementHistory.some(r=>r.id===settlementPaymentRecord.id))state.settlementHistory.push(settlementPaymentRecord);audit("settle-month",`${settlementPaymentRecord.month}: payment ${money(amount)} recorded; ${money(settlementPaymentRecord.remainingAmount)} remaining`);persist();document.getElementById("settlementModal").hidden=true;const remainingAfter=Math.max(0,due-(paid+amount));settlementPaymentRecord=null;render();alert(remainingAfter<=0.005?`Settlement fully settled. ${money(amount)} payment recorded.`:`Payment recorded. ${money(remainingAfter)} remains to be settled.`);
 });
 document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
 ["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
@@ -712,5 +728,5 @@ auth.onAuthStateChanged(user=>{
  if(user){showSignedIn(user);}else{cloudReady=false;if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}appContent.style.display="none";document.getElementById("authPanel").style.display="block";document.getElementById("headerSignOutBtn").style.display="none";document.getElementById("signInBtn").style.display="inline-block";document.getElementById("signUpBtn").style.display="inline-block";document.getElementById("authEmail").disabled=false;document.getElementById("authPassword").disabled=false;setAuthStatus("Not signed in. Cloud sync is unavailable until you sign in.");}
 });
 </script>
-</body>
+<div id="settlementModal" class="settlement-modal" hidden><div class="settlement-modal-card"><h3 id="settlementModalTitle">Record settlement payment</h3><p class="muted" id="settlementModalDirection"></p><div class="settlement-modal-grid"><div class="settlement-kpi"><span>Full settlement amount</span><strong id="modalDue">₹0</strong></div><div class="settlement-kpi"><span>Already paid</span><strong id="modalPaid">₹0</strong></div><div class="settlement-kpi"><span>Remaining</span><strong id="modalRemaining">₹0</strong></div><div><label for="settlementPaymentAmount">Amount paid now (₹)</label><input id="settlementPaymentAmount" type="number" min="0" step="0.01" placeholder="Enter amount paid"></div><button type="button" id="settlementFullAmountBtn" class="secondary">Use full remaining amount</button></div><div class="submit-row" style="margin-top:16px"><button type="button" id="saveSettlementPaymentBtn">Save payment</button><button type="button" id="cancelSettlementPaymentBtn" class="secondary">Cancel</button></div><p class="muted" style="margin-top:10px;font-size:12px">The payment is recorded against this month's settlement. Once the remaining amount reaches ₹0, the settlement is marked as fully settled.</p></div></div></body>
 </html>
