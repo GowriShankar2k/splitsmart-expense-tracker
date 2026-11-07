@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.1 — Expense Management</title>
+<title>SplitSmart v2.2 — Expense Management MG</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -48,6 +48,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 .summary-list .summary-row b{ text-align:right}
 .audit-action{font-weight:750}.audit-time{white-space:nowrap;color:var(--muted);font-size:12px}
 .audit-add{color:#147a53}.audit-delete{color:#bd3343}.audit-login{color:#2b55cf}
+.settled-badge{display:inline-block;background:#e9f8ef;color:#147a53;border:1px solid #c9ead7;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:750}.settlement-history-card{margin-top:16px}.settlement-history-meta{font-size:12px;color:var(--muted)}
 .amount-owner-group{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.85fr);gap:8px;align-items:end}.amount-owner-group>div{min-width:0}.item-panel{display:none;border:1px solid var(--line);background:#fbfcff;border-radius:12px;padding:12px;margin-top:10px}.item-details{margin-top:8px}.item-details summary{cursor:pointer;font-weight:650;font-size:13px;color:#284cae;padding:8px 0}.item-details[open] summary{margin-bottom:8px}.history-items{margin-top:5px}.history-items summary{cursor:pointer;color:#3153ad;font-size:11px}.history-items ul{margin:5px 0 0;padding-left:18px}.shopping-owner-note{font-size:11px;color:var(--muted)}.item-list{display:grid;gap:8px}.item-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(100px,.7fr) auto;gap:8px;align-items:center}.owner-tabs{display:flex;gap:8px;margin:8px 0 12px}.owner-tab{background:#edf1f8;color:#34415d}.owner-tab.active{background:var(--blue);color:white}.item-row button{padding:8px 10px}.item-total{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-weight:750}
 @media(max-width:480px){.item-row{grid-template-columns:minmax(0,1fr) minmax(85px,.7fr) auto}.owner-tabs button{flex:1}}
 @media(max-width:700px){.filters{grid-template-columns:1fr 1fr}.filters button{min-height:42px}.tabs{position:static}.tab-button{flex:1;padding:10px 8px}.summary-metrics{grid-template-columns:1fr 1fr}}
@@ -167,13 +168,14 @@ main{width:100%}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.1:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses.</div>
+ <div class="notice"><b>Version 2.2:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
   <button class="tab-button" data-tab="weeklyTab">Weekly spending planner</button>
   <button class="tab-button" data-tab="tipsTab">Money-saving tips</button>
   <button class="tab-button" data-tab="summaryTab">Monthly summary</button>
+  <button class="tab-button" data-tab="settlementHistoryTab">Settlement history</button>
   <button class="tab-button" data-tab="auditTab">Audit history</button>
  </nav>
  <section id="dashboardTab" class="tab-panel active">
@@ -238,7 +240,7 @@ main{width:100%}
      <div class="summary-row"><span id="sPaid1Label">Me contributed</span><b id="sPaid1">₹0</b></div>
      <div class="summary-row"><span id="sPaid2Label">Friend paid</span><b id="sPaid2">₹0</b></div>
     </div>
-    <div class="settlement"><span class="muted">SETTLEMENT</span><strong id="settlementText">No settlement needed</strong><div class="muted" id="settlementSub">When expenses are added, we'll calculate the difference.</div></div>
+    <div class="settlement"><span class="muted">SETTLEMENT</span><strong id="settlementText">No settlement needed</strong><div class="muted" id="settlementSub">When expenses are added, we'll calculate the difference.</div><div class="submit-row"><button type="button" id="markSettledBtn" class="secondary small-btn">Mark as settled</button><span id="settledStatus" class="muted"></span></div></div>
    </section>
    <section class="card section-gap"><h2>Spending by category</h2><div class="category-list" id="categoryBreakdown"></div></section>
   </div>
@@ -299,10 +301,17 @@ main{width:100%}
    <section class="card"><h2>Year-end settlement overview</h2><p class="muted">A reporting view of actual expenses and payments. Month-by-month settlement is calculated on the Dashboard.</p><div class="summary-list" id="yearSettlement"></div></section>
   </div>
  </section>
- <section id="auditTab" class="tab-panel" hidden>
+ <section id="settlementHistoryTab" class="tab-panel" hidden>
+  <section class="card">
+   <div class="card-head"><div><h2>Settlement history</h2><p class="muted">Confirmed month-end settlements are saved as fixed snapshots and will not change when new expenses are added later.</p></div></div>
+   <div class="table-wrap"><table><thead><tr><th>Settlement date</th><th>Month</th><th>Total expenses</th><th>Assigned shares</th><th>Contributed</th><th>Settlement</th><th>Status</th></tr></thead><tbody id="settlementHistoryRows"></tbody></table></div>
+   <div class="empty" id="settlementHistoryEmpty" hidden>No settlements have been marked as settled yet.</div>
+  </section>
+</section>
+<section id="auditTab" class="tab-panel" hidden>
   <div class="card">
    <div class="card-head"><div><h2>Audit history</h2><p class="muted">Sign-ins, expense additions/deletions, monthly saves, and settings changes.</p></div>
-    <div class="summary-controls"><label for="auditFilter">EVENT TYPE</label><select id="auditFilter"><option value="all">All events</option><option value="login">Sign-ins</option><option value="add">Expense added</option><option value="edit">Expense edited</option><option value="delete">Expense deleted</option><option value="save-month">Month saved</option><option value="settings">Settings changed</option></select></div>
+    <div class="summary-controls"><label for="auditFilter">EVENT TYPE</label><select id="auditFilter"><option value="all">All events</option><option value="login">Sign-ins</option><option value="add">Expense added</option><option value="edit">Expense edited</option><option value="delete">Expense deleted</option><option value="save-month">Month saved</option><option value="settings">Settings changed</option><option value="settle-month">Settlement recorded</option></select></div>
    </div>
    <div class="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th></tr></thead><tbody id="auditRows"></tbody></table></div>
    <div class="empty" id="auditEmpty" hidden>No audit events match this filter.</div>
@@ -337,14 +346,14 @@ const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",ma
 const today=new Date();
 const isoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const monthOf=d=>String(d||"").slice(0,7);
-let state={friend1:"Me",friend2:"Friend",expenses:[],savingTarget:1000,monthlySnapshots:{},audit:[]};
+let state={friend1:"Me",friend2:"Friend",expenses:[],savingTarget:1000,monthlySnapshots:{},settlementHistory:[],audit:[]};
 let editingExpenseId=null;
 let currentUserLabel="Unknown user";
 function audit(action,details){
  const entry={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),at:Date.now(),who:currentUserLabel,action,details:String(details||"")};
  state.audit=Array.isArray(state.audit)?state.audit:[];state.audit.unshift(entry);state.audit=state.audit.slice(0,500);
 }
-function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];}catch(e){}}
+function load(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");state={...state,...saved};if(!Array.isArray(state.expenses))state.expenses=[];if(!Array.isArray(state.settlementHistory))state.settlementHistory=[];}catch(e){}}
 function persist(){
   localStorage.setItem(KEY,JSON.stringify(state));
   if(cloudReady && !remoteUpdate){
@@ -429,6 +438,11 @@ function render(){
  if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s contributions exceed their assigned share of expenses.`}
  else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s contributions exceed their assigned share of expenses.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
+ const settlementRecords=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
+ const currentSettled=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
+ const markBtn=document.getElementById("markSettledBtn"); if(markBtn){markBtn.disabled=total<=0;markBtn.textContent=currentSettled.length?"Mark as settled again":"Mark as settled";}
+ const statusEl=document.getElementById("settledStatus"); if(statusEl){statusEl.innerHTML=currentSettled.length?`<span class="settled-badge">✓ Settled ${new Date(currentSettled[0].settledAt).toLocaleDateString("en-IN")}</span>`:"";}
+ renderSettlementHistory();
  const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{payer:e.payer,share1:Number(e.amount)/2,share2:Number(e.amount)/2};const source=f.payer===2?safe(n2):f.payer===3?"Shared payment":safe(n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<details class="history-items"><summary>View ${e.items.length} item${e.items.length===1?"":"s"}</summary><ul>${e.items.map(it=>`<li>${safe(it.name)} — ${money(it.amount)}</li>`).join("")}</ul></details>`:"";const ownerInfo=e.category==="Shopping"?`<div class="shopping-owner-note">Shopping for: ${safe((Number(e.shoppingOwner)||1)===2?n2:n1)}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${ownerInfo}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary small-btn" data-edit="${e.id}" aria-label="Edit expense">Edit</button><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></div></td></tr>`}).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
  const breakdown=CATEGORIES.map(c=>({cat:c,total:sum(allMonthEx.filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total);
@@ -455,12 +469,23 @@ function renderSummary(){
  document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),f=calculateFunding(ex);return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(f.contributed1)}</td><td>${money(f.contributed2)}</td><td>${money(f.share1)}</td><td>${money(f.share2)}</td><td>${ex.length}</td></tr>`}).join("");
  const cats=CATEGORIES.map(cat=>({cat,total:sum(list.filter(e=>e.category===cat))})).sort((a,b)=>b.total-a.total),max=Math.max(1,...cats.map(c=>c.total));
  document.getElementById("yearCategoryBreakdown").innerHTML=cats.map(c=>`<div class="cat-row"><span>${safe(c.cat)}</span><div class="bar"><span style="width:${c.total/max*100}%"></span></div><span class="cat-amount">${money(c.total)}</span></div>`).join("");
- document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>Monthly snapshots saved</span><b>${Object.keys(state.monthlySnapshots||{}).filter(m=>m.startsWith(year)).length} / 12</b></div>`;
+ document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>Settlements recorded</span><b>${(state.settlementHistory||[]).filter(r=>String(r.month||"").startsWith(year)).length}</b></div>`;
+}
+function renderSettlementHistory(){
+ const body=document.getElementById("settlementHistoryRows"); if(!body)return;
+ const rows=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).slice().sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
+ body.innerHTML=rows.map(r=>{
+   const n1=r.friend1||names()[0], n2=r.friend2||names()[1];
+   const payer=r.balance>0?n2:n1, receiver=r.balance>0?n1:n2, amount=Math.abs(Number(r.balance||0));
+   const settlement=amount>0.005?`${safe(payer)} pays ${safe(receiver)} ${money(amount)}`:`No payment needed`;
+   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b></td><td><span class="settled-badge">✓ Settled</span><div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td></tr>`;
+ }).join("");
+ document.getElementById("settlementHistoryEmpty").hidden=rows.length>0;
 }
 function renderAudit(){
  const body=document.getElementById("auditRows");if(!body)return;
  const filter=document.getElementById("auditFilter").value||"all",entries=(Array.isArray(state.audit)?state.audit:[]).filter(a=>filter==="all"||a.action===filter);
- body.innerHTML=entries.map(a=>`<tr><td class="audit-time">${new Date(a.at||Date.now()).toLocaleString()}</td><td>${safe(a.who||"Unknown")}</td><td class="audit-action ${a.action==="add"||a.action==="edit"?"audit-add":a.action==="delete"?"audit-delete":a.action==="login"?"audit-login":""}">${safe(({login:"Signed in",add:"Expense added",edit:"Expense edited",delete:"Expense deleted","save-month":"Month saved",settings:"Settings changed"})[a.action]||a.action)}</td><td>${safe(a.details||"—")}</td></tr>`).join("");
+ body.innerHTML=entries.map(a=>`<tr><td class="audit-time">${new Date(a.at||Date.now()).toLocaleString()}</td><td>${safe(a.who||"Unknown")}</td><td class="audit-action ${a.action==="add"||a.action==="edit"?"audit-add":a.action==="delete"?"audit-delete":a.action==="login"?"audit-login":""}">${safe(({login:"Signed in",add:"Expense added",edit:"Expense edited",delete:"Expense deleted","save-month":"Month saved",settings:"Settings changed","settle-month":"Settlement recorded"})[a.action]||a.action)}</td><td>${safe(a.details||"—")}</td></tr>`).join("");
  document.getElementById("auditEmpty").hidden=entries.length>0;
 }
 
@@ -597,13 +622,23 @@ function loadExpenseForEdit(id){const expense=state.expenses.find(x=>x.id===id);
 document.getElementById("addAnotherExpenseBtn").addEventListener("click",()=>{const date=document.getElementById("date").value||isoDate(today);editingExpenseId=null;document.getElementById("expenseSubmitBtn").textContent="Save expense";document.getElementById("addAnotherExpenseBtn").style.display="none";document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("category").value="Groceries";document.getElementById("payer").value="1";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";document.getElementById("date").value=date;refreshItemRows();document.getElementById("expenseForm").scrollIntoView({behavior:"smooth",block:"start"});});
 document.getElementById("expenseRows").addEventListener("click",e=>{const editId=e.target.dataset.edit;if(editId){loadExpenseForEdit(editId);return;}const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
+document.getElementById("markSettledBtn").addEventListener("click",()=>{
+ const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex); if(!ex.length){alert("There are no expenses to settle for this month.");return;}
+ const existing=(state.settlementHistory||[]).filter(r=>r.month===m);
+ const message=existing.length?`A settlement for ${m} already exists. This will create a new settlement record using the current month totals. Continue?`:`Mark the ${m} settlement as settled?\n\n${funding.balance1>0.005?`${names()[1]} pays ${names()[0]} ${money(funding.balance1)}`:funding.balance1<-0.005?`${names()[0]} pays ${names()[1]} ${money(-funding.balance1)}`:`No payment is needed`}`;
+ if(!confirm(message))return;
+ state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
+ state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,expenseCount:ex.length,expenseIds:ex.map(e=>e.id)});
+ audit("settle-month",`Settled ${m}: ${money(funding.total)} total; balance ${money(Math.abs(funding.balance1))}`);
+ persist();render();alert(`Settlement for ${m} has been recorded.`);
+});
 document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
 ["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("historyDetails").addEventListener("input",render);
 document.getElementById("clearHistoryFilters").addEventListener("click",()=>{["historyDateFrom","historyDateTo","historyDetails","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).value="");document.getElementById("historyPaidBy").value="all";render()});
 document.getElementById("summaryYear").addEventListener("change",renderSummary);
 document.getElementById("auditFilter").addEventListener("change",renderAudit);
-document.querySelectorAll(".tab-button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("active",b===btn));document.querySelectorAll(".tab-panel").forEach(p=>{p.hidden=p.id!==btn.dataset.tab;p.classList.toggle("active",p.id===btn.dataset.tab)});if(btn.dataset.tab==="summaryTab")renderSummary();if(btn.dataset.tab==="auditTab")renderAudit();if(btn.dataset.tab==="tipsTab")renderTips(currentExpenses(),sum(currentExpenses()),CATEGORIES.map(c=>({cat:c,total:sum(currentExpenses().filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total),...names());}));
+document.querySelectorAll(".tab-button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("active",b===btn));document.querySelectorAll(".tab-panel").forEach(p=>{p.hidden=p.id!==btn.dataset.tab;p.classList.toggle("active",p.id===btn.dataset.tab)});if(btn.dataset.tab==="summaryTab")renderSummary();if(btn.dataset.tab==="auditTab")renderAudit();if(btn.dataset.tab==="settlementHistoryTab")renderSettlementHistory();if(btn.dataset.tab==="tipsTab")renderTips(currentExpenses(),sum(currentExpenses()),CATEGORIES.map(c=>({cat:c,total:sum(currentExpenses().filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total),...names());}));
 document.getElementById("monthFilter").addEventListener("change",render);
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});downloadBlob(blob,`splitsmart-backup-${isoDate(today)}.json`)});
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
@@ -662,7 +697,7 @@ function showSignedIn(user){
  if(unsubscribeShared)unsubscribeShared();
  unsubscribeShared=sharedDoc.onSnapshot(doc=>{
    cloudReady=doc.exists;
-   if(doc.exists){remoteUpdate=true;const data=doc.data();state={friend1:data.friend1||"Me",friend2:data.friend2||"Friend",expenses:Array.isArray(data.expenses)?data.expenses:[],savingTarget:Number(data.savingTarget??1000),monthlySnapshots:data.monthlySnapshots&&typeof data.monthlySnapshots==="object"?data.monthlySnapshots:{},audit:Array.isArray(data.audit)?data.audit:[]};localStorage.setItem(KEY,JSON.stringify(state));remoteUpdate=false;
+   if(doc.exists){remoteUpdate=true;const data=doc.data();state={friend1:data.friend1||"Me",friend2:data.friend2||"Friend",expenses:Array.isArray(data.expenses)?data.expenses:[],savingTarget:Number(data.savingTarget??1000),monthlySnapshots:data.monthlySnapshots&&typeof data.monthlySnapshots==="object"?data.monthlySnapshots:{},settlementHistory:Array.isArray(data.settlementHistory)?data.settlementHistory:[],audit:Array.isArray(data.audit)?data.audit:[]};localStorage.setItem(KEY,JSON.stringify(state));remoteUpdate=false;
     if(lastAuditedUid!==user.uid){lastAuditedUid=user.uid;currentUserLabel=user.email||user.uid;audit("login",`Signed in to SplitSmart (${currentUserLabel})`);persist();}
    }
    else { setAuthStatus("Signed in, but shared household data has not been initialized. Ask the owner to configure the secure Firestore rules and initialize the shared document."); }
