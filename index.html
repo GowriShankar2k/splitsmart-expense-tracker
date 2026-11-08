@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.4 — Expense Management</title>
+<title>SplitSmart v2.5 — Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -135,7 +135,7 @@ main{width:100%}
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v2.1</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v2.5</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -170,7 +170,7 @@ main{width:100%}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.4:</b> Includes previous-month outstanding settlement carry-forward in the current month settlement calculation.</div>
+ <div class="notice"><b>Version 2.2:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
@@ -241,6 +241,7 @@ main{width:100%}
      <div class="summary-row"><span id="sShare2Label">Mani Raju's assigned share</span><b id="sShare2">₹0</b></div>
      <div class="summary-row"><span id="sPaid1Label">Me contributed</span><b id="sPaid1">₹0</b></div>
      <div class="summary-row"><span id="sPaid2Label">Friend paid</span><b id="sPaid2">₹0</b></div>
+     <div class="summary-row" id="previousSettlementRow" style="display:none"><span id="previousSettlementLabel">Previous month outstanding</span><b id="previousSettlementAmount">₹0</b></div>
     </div>
     <div class="settlement"><span class="muted">SETTLEMENT</span><strong id="settlementText">No settlement needed</strong><div class="muted" id="settlementSub">When expenses are added, we'll calculate the difference.</div><div class="submit-row"><button type="button" id="markSettledBtn" class="secondary small-btn">Mark as settled</button><span id="settledStatus" class="muted"></span></div></div>
    </section>
@@ -349,7 +350,7 @@ main{width:100%}
  </div>
 </div>
 </main>
-<footer>SplitSmart v2.4 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
+<footer>SplitSmart v2.5 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -452,29 +453,15 @@ function renderWeeklySpending(expenses){
  }).join("");
  document.getElementById("weeklySpendingRows").innerHTML=rows||`<tr><td colspan="6" class="muted">No expenses recorded for this month yet.</td></tr>`;
 }
-function latestSettlementForMonth(month){
- const records=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- return records.filter(r=>String(r.month||"")===String(month)).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0))[0]||null;
-}
-function previousMonth(month){
- const d=new Date(String(month)+"-01T00:00:00"); d.setMonth(d.getMonth()-1); return monthOf(d);
-}
-function getCarryForwardInfo(month, currentExpenses){
- const prev=previousMonth(month);
- const prevRecord=latestSettlementForMonth(prev);
- const remaining=Math.max(0,Number(prevRecord?.remainingAmount||0));
- if(remaining<0.005)return {remaining:0,signed:0,sourceMonth:prev,alreadyInExpenses:false};
- const alreadyInExpenses=currentExpenses.some(e=>e.settlementCarryForward===true && String(e.sourceSettlementMonth||"")===prev);
- if(alreadyInExpenses)return {remaining,signed:0,sourceMonth:prev,alreadyInExpenses:true};
- const oldBalance=Number(prevRecord?.balance||0);
- const signed=oldBalance>0.005?remaining:oldBalance<-0.005?-remaining:0;
- return {remaining,signed,sourceMonth:prev,alreadyInExpenses:false};
-}
 function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
- const funding=calculateFunding(allMonthEx), contributed1=funding.contributed1, contributed2=funding.contributed2, currentBalance=funding.balance1;
- const carryInfo=getCarryForwardInfo(currentMonth(),allMonthEx);
- const balance=currentBalance+carryInfo.signed;
+ const previousMonth=(()=>{const d=new Date(currentMonth()+"-01T00:00:00");d.setMonth(d.getMonth()-1);return monthOf(d);})();
+ const previousRecords=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).filter(r=>r.month===previousMonth&&Number(r.remainingAmount||0)>0.005).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
+ const previousOutstanding=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ const baseMonthEx=allMonthEx.filter(e=>!e.settlementCarryForward);
+ const baseFunding=calculateFunding(baseMonthEx);
+ const funding=calculateFunding(allMonthEx), contributed1=funding.contributed1, contributed2=funding.contributed2;
+ const balance=Number(baseFunding.balance1||0)+(previousOutstanding*(previousRecords.length&&Number(previousRecords[0].balance||0)<0?-1:1));
  document.getElementById("friend1").value=n1;document.getElementById("friend2").value=n2;
  updateShoppingOwnerLabels();
  document.getElementById("payer").innerHTML=`<option value="1">${safe(n1)}</option><option value="2">${safe(n2)}</option>`;
@@ -484,13 +471,11 @@ function render(){
  document.getElementById("eachShare").textContent=`${money(funding.share1)} / ${money(funding.share2)}`;document.querySelector(".grid .card:nth-child(2) .metric-sub").textContent=`${n1}: ${money(funding.share1)} · ${n2}: ${money(funding.share2)}`;document.getElementById("paid1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("paid2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
  document.getElementById("paid1").textContent=money(contributed1);document.getElementById("paid2").textContent=money(contributed2);document.getElementById("paid1Sub").textContent="Direct payments";document.getElementById("paid2Sub").textContent="Direct payments";
  document.getElementById("sTotal").textContent=money(total);document.getElementById("sShare1Label").textContent=`${n1} assigned share`;document.getElementById("sShare2Label").textContent=`${n2} assigned share`;document.getElementById("sShare1").textContent=money(funding.share1);document.getElementById("sShare2").textContent=money(funding.share2);document.getElementById("sPaid1Label").textContent=`${n1} contributed`;document.getElementById("sPaid2Label").textContent=`${n2} contributed`;document.getElementById("sPaid1").textContent=money(contributed1);document.getElementById("sPaid2").textContent=money(contributed2);
+ const prevRow=document.getElementById("previousSettlementRow");
+ if(prevRow){prevRow.style.display=previousOutstanding>0.005?"flex":"none";document.getElementById("previousSettlementLabel").textContent=`Previous month outstanding (${previousMonth})`;document.getElementById("previousSettlementAmount").textContent=money(previousOutstanding);}
   let settle="No settlement needed",sub="You are both square for this month.";
- if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=`${n1}'s contributions exceed their assigned share of expenses.`}
- else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=`${n2}'s contributions exceed their assigned share of expenses.`}
- if(carryInfo.remaining>0.005){
-   const carryText=`Previous month outstanding: ${money(carryInfo.remaining)} from ${carryInfo.sourceMonth}.`;
-   sub=carryInfo.alreadyInExpenses?`${sub} ${carryText} It is already included in this month's expenses.`:`${sub} ${carryText} It is included in this month's settlement.`;
- }
+ if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n1}'s contributions exceed their assigned share of expenses.`}
+ else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n2}'s contributions exceed their assigned share of expenses.`}
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
  const settlementRecords=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
  const currentSettled=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
@@ -681,12 +666,16 @@ document.getElementById("saveNames").addEventListener("click",()=>{state.friend1
 const settlementModal=document.getElementById("settlementModal");
 let settlementContext=null;
 function openSettlementModal(){
- const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex),carryInfo=getCarryForwardInfo(m,ex);
- if(!ex.length && carryInfo.remaining<0.005){alert("There are no expenses or outstanding settlements to settle for this month.");return;}
- const effectiveBalance=Number(funding.balance1||0)+Number(carryInfo.signed||0);
- const due=Math.abs(effectiveBalance);
- settlementContext={month:m,expenses:ex,funding,due,effectiveBalance,currentBalance:funding.balance1,carryInfo,payer:effectiveBalance>0.005?2:effectiveBalance<-0.005?1:0,receiver:effectiveBalance>0.005?1:effectiveBalance<-0.005?2:0};
- document.getElementById("settlementModalMessage").textContent=carryInfo.remaining>0.005?`Settlement due for ${m}: ${money(due)}, including ${money(carryInfo.remaining)} outstanding from ${carryInfo.sourceMonth}.`:`Settlement due for ${m}: ${money(due)}.`;
+ const m=currentMonth(),ex=currentExpenses();
+ const previousMonth=(()=>{const d=new Date(m+"-01T00:00:00");d.setMonth(d.getMonth()-1);return monthOf(d);})();
+ const previousRecords=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).filter(r=>r.month===previousMonth&&Number(r.remainingAmount||0)>0.005).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
+ const previousOutstanding=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ const baseEx=ex.filter(e=>!e.settlementCarryForward),baseFunding=calculateFunding(baseEx);
+ const signedPrevious=previousOutstanding*(previousRecords.length&&Number(previousRecords[0].balance||0)<0?-1:1);
+ const combinedBalance=Number(baseFunding.balance1||0)+signedPrevious;
+ if(!baseEx.length && previousOutstanding<=0.005){alert("There are no expenses to settle for this month.");return;}
+ settlementContext={month:m,expenses:baseEx,funding:baseFunding,due:Math.abs(combinedBalance),payer:combinedBalance>0?2:combinedBalance<0?1:0,receiver:combinedBalance>0?1:combinedBalance<0?2:0,previousOutstanding,previousMonth,previousRecord:previousRecords[0]||null,combinedBalance};
+ document.getElementById("settlementModalMessage").textContent=`Settlement due for ${m}: ${money(settlementContext.due)}${previousOutstanding>0.005?` (includes ${money(previousOutstanding)} outstanding from ${previousMonth})`:""}.`;
  document.getElementById("settlementChoiceView").style.display="block";document.getElementById("partialSettlementView").style.display="none";document.getElementById("carryForwardView").style.display="none";document.getElementById("fullActions").style.display="none";document.getElementById("settlementCancelActions").style.display="flex";
  settlementModal.classList.add("show");settlementModal.setAttribute("aria-hidden","false");
 }
@@ -695,11 +684,11 @@ function recordSettlement(settledAmount,carryForward){
  const c=settlementContext;if(!c)return;
  const remaining=Math.max(0,c.due-settledAmount);
  state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:c.month,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:c.funding.total,share1:c.funding.share1,share2:c.funding.share2,paid1:c.funding.contributed1,paid2:c.funding.contributed2,balance:c.effectiveBalance,currentBalance:c.currentBalance,previousMonthOutstanding:Number(c.carryInfo?.remaining||0),previousMonth:c.carryInfo?.sourceMonth||null,settlementDue:c.due,settledAmount,remainingAmount:remaining,status:remaining<0.005?"Fully Settled":"Partially Settled",carryForward:!!carryForward,expenseCount:c.expenses.length,expenseIds:c.expenses.map(e=>e.id)});
+ state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:c.month,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:c.funding.total+c.previousOutstanding,share1:c.funding.share1,share2:c.funding.share2,paid1:c.funding.contributed1,paid2:c.funding.contributed2,balance:c.combinedBalance,settledAmount,remainingAmount:remaining,status:remaining<0.005?"Fully Settled":"Partially Settled",carryForward:!!carryForward,previousMonthOutstanding:c.previousOutstanding,previousSettlementMonth:c.previousMonth||null,expenseCount:c.expenses.length,expenseIds:c.expenses.map(e=>e.id)});
  if(carryForward&&remaining>0.005){
    const next=new Date(c.month+"-01T00:00:00");next.setMonth(next.getMonth()+1);const nextMonth=monthOf(next);
    const desc=`Settlement balance carried forward from ${c.month}`;
-   const carry={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:`${nextMonth}-01`,description:desc,category:"Other expenses",amount:remaining,payer:c.receiver||1,created:Date.now(),share1:c.payer===2?remaining:0,share2:c.payer===1?remaining:0,settlementCarryForward:true,sourceSettlementMonth:c.month};
+   const carry={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:`${nextMonth}-01`,description:desc,category:"Other expenses",amount:remaining,payer:c.receiver||1,created:Date.now(),share1:c.payer===1?remaining:0,share2:c.payer===2?remaining:0,settlementCarryForward:true,sourceSettlementMonth:c.month};
    c.expenses.push(carry);state.expenses.push(carry);
    audit("add",`${desc} · ${money(remaining)} · Other expenses`);
  }
@@ -711,7 +700,7 @@ document.getElementById("fullConfirmBtn").addEventListener("click",()=>recordSet
 document.getElementById("partiallySettledChoice").addEventListener("click",()=>{if(!settlementContext)return;document.getElementById("settlementChoiceView").style.display="none";document.getElementById("partialSettlementView").style.display="block";document.getElementById("settlementCancelActions").style.display="none";document.getElementById("settlementDueAmount").textContent=money(settlementContext.due);document.getElementById("settlementPaidAmount").textContent=money(0);document.getElementById("settlementRemainingAmount").textContent=money(settlementContext.due);document.getElementById("settledAmountInput").value="";document.getElementById("settledAmountInput").focus();});
 document.getElementById("settledAmountInput").addEventListener("input",()=>{const v=Math.max(0,Number(document.getElementById("settledAmountInput").value)||0);const r=Math.max(0,(settlementContext?.due||0)-v);document.getElementById("settlementPaidAmount").textContent=money(v);document.getElementById("settlementRemainingAmount").textContent=money(r);});
 document.getElementById("partialBackBtn").addEventListener("click",()=>{document.getElementById("partialSettlementView").style.display="none";document.getElementById("settlementChoiceView").style.display="block";document.getElementById("settlementCancelActions").style.display="flex";});
-document.getElementById("partialConfirmBtn").addEventListener("click",()=>{const v=Number(document.getElementById("settledAmountInput").value);if(!Number.isFinite(v)||v<=0){alert("Enter an amount greater than zero.");return;}if(v>=settlementContext.due-0.005){recordSettlement(settlementContext.due,false);return;}const remaining=settlementContext.due-v;document.getElementById("partialSettlementView").style.display="none";document.getElementById("carryForwardView").style.display="block";document.getElementById("settlementCancelActions").style.display="none";document.getElementById("carryForwardMessage").textContent=`${money(remaining)} remains unsettled. Add this remaining amount to ${monthOf(new Date(settlementContext.month+"-01T00:00:00")) === settlementContext.month ? "next month" : "the next month"}'s Expense History?`;settlementContext.pendingSettledAmount=v;settlementContext.pendingRemaining=remaining;});
+document.getElementById("partialConfirmBtn").addEventListener("click",()=>{const v=Number(document.getElementById("settledAmountInput").value);if(!Number.isFinite(v)||v<=0){alert("Enter an amount greater than zero.");return;}if(v>=settlementContext.due-0.005){recordSettlement(settlementContext.due,false);return;}const remaining=settlementContext.due-v;document.getElementById("partialSettlementView").style.display="none";document.getElementById("carryForwardView").style.display="block";document.getElementById("settlementCancelActions").style.display="none";document.getElementById("carryForwardMessage").textContent=`${money(remaining)} remains unsettled. Add this remaining amount to the next month's Expense History?`;settlementContext.pendingSettledAmount=v;settlementContext.pendingRemaining=remaining;});
 document.getElementById("carryYesBtn").addEventListener("click",()=>recordSettlement(settlementContext.pendingSettledAmount, true));
 document.getElementById("carryNoBtn").addEventListener("click",()=>recordSettlement(settlementContext.pendingSettledAmount, false));
 document.getElementById("settlementCancelBtn").addEventListener("click",closeSettlementModal);
