@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.2 — Expense Management</title>
+<title>SplitSmart v2.3 — MG Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -129,6 +129,8 @@ main{width:100%}
   .item-row{grid-template-columns:1fr}
 }
 
+
+.settlement-choice-modal{position:fixed;inset:0;background:rgba(10,18,35,.48);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.settlement-choice-card{width:min(430px,100%);background:#fff;border-radius:14px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.22)}.settlement-choice-card h3{margin:0 0 8px}.settlement-choice-card p{margin:6px 0 14px;color:var(--muted);line-height:1.5}.settlement-choice-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.settlement-choice-buttons button{flex:1;min-width:140px}.settlement-amount-box{margin-top:14px}.settlement-amount-box label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}.settlement-amount-box input{width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:9px;font-size:16px}.settlement-result{margin-top:12px;padding:11px;border-radius:9px;background:var(--bg);font-size:13px}.settlement-result b{display:block;font-size:17px;margin-top:3px}.settlement-choice-close{background:transparent;border:0;color:var(--muted);padding:5px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -441,7 +443,7 @@ function render(){
  const settlementRecords=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
  const currentSettled=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
  const markBtn=document.getElementById("markSettledBtn"); if(markBtn){markBtn.disabled=total<=0;markBtn.textContent=currentSettled.length?"Mark as settled again":"Mark as settled";}
- const statusEl=document.getElementById("settledStatus"); if(statusEl){statusEl.innerHTML=currentSettled.length?`<span class="settled-badge">✓ Settled ${new Date(currentSettled[0].settledAt).toLocaleDateString("en-IN")}</span>`:"";}
+ const statusEl=document.getElementById("settledStatus"); if(statusEl){const latest=currentSettled[0];statusEl.innerHTML=latest?`<span class="settled-badge">✓ ${safe(latest.status||"Fully Settled")} ${new Date(latest.settledAt).toLocaleDateString("en-IN")}${Number(latest.remainingAmount||0)>0.005?` · Remaining ${money(latest.remainingAmount)}`:""}</span>`:"";}
  renderSettlementHistory();
  const rows=document.getElementById("expenseRows");rows.innerHTML=ex.map(e=>{const f=funding.expenseFunding[e.id]||{payer:e.payer,share1:Number(e.amount)/2,share2:Number(e.amount)/2};const source=f.payer===2?safe(n2):f.payer===3?"Shared payment":safe(n1);const splitInfo=`<div class="muted" style="font-size:11px">Split: ${safe(n1)} ${money(f.share1??Number(e.amount)/2)} · ${safe(n2)} ${money(f.share2??Number(e.amount)/2)}</div>`;const itemInfo=Array.isArray(e.items)&&e.items.length?`<details class="history-items"><summary>View ${e.items.length} item${e.items.length===1?"":"s"}</summary><ul>${e.items.map(it=>`<li>${safe(it.name)} — ${money(it.amount)}</li>`).join("")}</ul></details>`:"";const ownerInfo=e.category==="Shopping"?`<div class="shopping-owner-note">Shopping for: ${safe((Number(e.shoppingOwner)||1)===2?n2:n1)}</div>`:"";return `<tr><td>${safe(e.date)}</td><td>${safe(e.description)}${ownerInfo}${itemInfo}${splitInfo}</td><td><span class="pill">${safe(e.category)}</span></td><td>${source}</td><td class="amount">${money(e.amount)}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="secondary small-btn" data-edit="${e.id}" aria-label="Edit expense">Edit</button><button class="danger small-btn" data-delete="${e.id}" aria-label="Delete expense">Delete</button></div></td></tr>`}).join("");
  document.getElementById("emptyState").style.display=ex.length?"none":"block";
@@ -478,7 +480,8 @@ function renderSettlementHistory(){
    const n1=r.friend1||names()[0], n2=r.friend2||names()[1];
    const payer=r.balance>0?n2:n1, receiver=r.balance>0?n1:n2, amount=Math.abs(Number(r.balance||0));
    const settlement=amount>0.005?`${safe(payer)} pays ${safe(receiver)} ${money(amount)}`:`No payment needed`;
-   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b></td><td><span class="settled-badge">✓ Settled</span><div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td></tr>`;
+   const status=r.status||"Fully Settled", settledNow=Number(r.settledAmount??(status==="Fully Settled"?amount:0)), remaining=Number(r.remainingAmount??0);
+   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b><div class="settlement-history-meta">Settled now: ${money(settledNow)}${remaining>0.005?` · Remaining: ${money(remaining)}`:""}</div></td><td><span class="settled-badge">✓ ${safe(status)}</span><div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td></tr>`;
  }).join("");
  document.getElementById("settlementHistoryEmpty").hidden=rows.length>0;
 }
@@ -622,16 +625,69 @@ function loadExpenseForEdit(id){const expense=state.expenses.find(x=>x.id===id);
 document.getElementById("addAnotherExpenseBtn").addEventListener("click",()=>{const date=document.getElementById("date").value||isoDate(today);editingExpenseId=null;document.getElementById("expenseSubmitBtn").textContent="Save expense";document.getElementById("addAnotherExpenseBtn").style.display="none";document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("category").value="Groceries";document.getElementById("payer").value="1";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";document.getElementById("date").value=date;refreshItemRows();document.getElementById("expenseForm").scrollIntoView({behavior:"smooth",block:"start"});});
 document.getElementById("expenseRows").addEventListener("click",e=>{const editId=e.target.dataset.edit;if(editId){loadExpenseForEdit(editId);return;}const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
-document.getElementById("markSettledBtn").addEventListener("click",()=>{
- const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex); if(!ex.length){alert("There are no expenses to settle for this month.");return;}
- const existing=(state.settlementHistory||[]).filter(r=>r.month===m);
- const message=existing.length?`A settlement for ${m} already exists. This will create a new settlement record using the current month totals. Continue?`:`Mark the ${m} settlement as settled?\n\n${funding.balance1>0.005?`${names()[1]} pays ${names()[0]} ${money(funding.balance1)}`:funding.balance1<-0.005?`${names()[0]} pays ${names()[1]} ${money(-funding.balance1)}`:`No payment is needed`}`;
- if(!confirm(message))return;
- state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,expenseCount:ex.length,expenseIds:ex.map(e=>e.id)});
- audit("settle-month",`Settled ${m}: ${money(funding.total)} total; balance ${money(Math.abs(funding.balance1))}`);
- persist();render();alert(`Settlement for ${m} has been recorded.`);
+let pendingSettlement=null;
+function nextMonthFrom(m){const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;}
+function nextMonthDate(m){return `${nextMonthFrom(m)}-01`;}
+function closeSettlementModal(){pendingSettlement=null;document.getElementById("settlementChoiceModal").hidden=true;document.getElementById("partialSettlementBox").hidden=true;document.getElementById("settlementChoiceButtons").style.display="flex";document.getElementById("settledAmountInput").value="";}
+function openSettlementModal(){
+ const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);
+ if(!ex.length){alert("There are no expenses to settle for this month.");return;}
+ const [n1,n2]=names();
+ const due=Math.abs(funding.balance1);
+ if(due<=0.005){recordSettlementPayment(m,ex,funding,0,due,"Fully Settled");return;}
+ pendingSettlement={m,ex,funding,due,n1,n2};
+ document.getElementById("settlementChoiceText").textContent=`${funding.balance1>0?`${n2} pays ${n1}`:`${n1} pays ${n2}`} ${money(due)}. Choose how this settlement is handled.`;
+ document.getElementById("settlementChoiceModal").hidden=false;
+}
+function recordSettlementPayment(m,ex,funding,amountSettled,remaining,status){
+ const [n1,n2]=names();
+ const direction=funding.balance1>0?`${n2} pays ${n1}`:funding.balance1<0?`${n1} pays ${n2}`:`No payment is needed`;
+ const record={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,settledAt:Date.now(),settledBy:currentUserLabel,friend1:n1,friend2:n2,total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,settledAmount:Number(amountSettled),remainingAmount:Number(remaining),status,expenseCount:ex.length,expenseIds:ex.map(e=>e.id)};
+ state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];state.settlementHistory.push(record);
+ audit("settle-month",`${status}: ${m}; ${direction}; settled ${money(amountSettled)}; remaining ${money(remaining)}`);
+ persist();render();
+ if(status==="Partially Settled" && remaining>0.005){
+   const addCarry=confirm(`Remaining amount is ${money(remaining)}.\n\nDo you want to add this remaining amount to ${nextMonthFrom(m)} expense history?`);
+   if(addCarry){
+     const payer=funding.balance1>0?1:2;
+     const carryExpense={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:nextMonthDate(m),description:`Remaining settlement from ${m}`,category:"Other expenses",amount:Number(remaining.toFixed(2)),payer,share1:payer===1?Number(remaining.toFixed(2)):0,share2:payer===2?Number(remaining.toFixed(2)):0,created:Date.now()};
+     state.expenses.push(carryExpense);
+     audit("add",`Carried forward ${money(remaining)} remaining settlement from ${m} to ${nextMonthFrom(m)}`);
+     persist();render();
+     alert(`${money(remaining)} has been added to ${nextMonthFrom(m)} expense history.`);
+   }
+ }
+}
+document.getElementById("markSettledBtn").addEventListener("click",openSettlementModal);
+document.getElementById("fullySettledBtn").addEventListener("click",()=>{
+ if(!pendingSettlement)return;
+ const p=pendingSettlement;
+ recordSettlementPayment(p.m,p.ex,p.funding,p.due,0,"Fully Settled");
+ closeSettlementModal();
+ alert(`Settlement for ${p.m} has been fully settled.`);
 });
+document.getElementById("partiallySettledBtn").addEventListener("click",()=>{
+ if(!pendingSettlement)return;
+ document.getElementById("settlementChoiceButtons").style.display="none";document.getElementById("partialSettlementBox").hidden=false;
+ document.getElementById("settledAmountInput").focus();
+});
+document.getElementById("settledAmountInput").addEventListener("input",()=>{
+ const p=pendingSettlement;if(!p)return;
+ const entered=Number(document.getElementById("settledAmountInput").value)||0;const remaining=Math.max(0,p.due-entered);
+ document.getElementById("settlementCalculation").innerHTML=`Remaining amount: <b>${money(remaining)}</b>`;
+});
+document.getElementById("savePartialSettlementBtn").addEventListener("click",()=>{
+ const p=pendingSettlement; if(!p)return;
+ const entered=Number(document.getElementById("settledAmountInput").value);
+ if(!Number.isFinite(entered)||entered<=0){alert("Enter an amount greater than zero.");return;}
+ if(entered>p.due+0.005){alert(`The amount settled cannot be more than ${money(p.due)}.`);return;}
+ const remaining=Math.max(0,Number((p.due-entered).toFixed(2)));
+ if(remaining<=0.005){recordSettlementPayment(p.m,p.ex,p.funding,p.due,0,"Fully Settled");closeSettlementModal();alert(`Settlement for ${p.m} has been fully settled.`);return;}
+ recordSettlementPayment(p.m,p.ex,p.funding,Number(entered.toFixed(2)),remaining,"Partially Settled");
+ closeSettlementModal();
+});
+document.getElementById("cancelPartialSettlementBtn").addEventListener("click",closeSettlementModal);
+document.getElementById("settlementCloseBtn").addEventListener("click",closeSettlementModal);
 document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
 ["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("historyDetails").addEventListener("input",render);
@@ -712,5 +768,27 @@ auth.onAuthStateChanged(user=>{
  if(user){showSignedIn(user);}else{cloudReady=false;if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}appContent.style.display="none";document.getElementById("authPanel").style.display="block";document.getElementById("headerSignOutBtn").style.display="none";document.getElementById("signInBtn").style.display="inline-block";document.getElementById("signUpBtn").style.display="inline-block";document.getElementById("authEmail").disabled=false;document.getElementById("authPassword").disabled=false;setAuthStatus("Not signed in. Cloud sync is unavailable until you sign in.");}
 });
 </script>
+
+<div id="settlementChoiceModal" class="settlement-choice-modal" hidden>
+ <div class="settlement-choice-card">
+  <button type="button" id="settlementCloseBtn" class="settlement-choice-close" style="float:right">✕</button>
+  <h3>Settlement status</h3>
+  <p id="settlementChoiceText"></p>
+  <div class="settlement-choice-buttons" id="settlementChoiceButtons">
+   <button type="button" id="fullySettledBtn" class="primary">Fully settled</button>
+   <button type="button" id="partiallySettledBtn" class="secondary">Partially settled</button>
+  </div>
+  <div id="partialSettlementBox" class="settlement-amount-box" hidden>
+   <label for="settledAmountInput">Amount settled</label>
+   <input id="settledAmountInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount settled">
+   <div id="settlementCalculation" class="settlement-result">Remaining amount: <b>₹0.00</b></div>
+   <div class="settlement-choice-buttons">
+    <button type="button" id="savePartialSettlementBtn" class="primary">Save partial settlement</button>
+    <button type="button" id="cancelPartialSettlementBtn" class="secondary">Cancel</button>
+   </div>
+  </div>
+ </div>
+</div>
+
 </body>
 </html>
