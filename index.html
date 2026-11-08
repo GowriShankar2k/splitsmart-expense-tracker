@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.5 — Expense Management</title>
+<title>SplitSmart v2.6 — Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -168,7 +168,7 @@ main{width:100%}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.5:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
+ <div class="notice"><b>Version 2.2:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
@@ -319,7 +319,7 @@ main{width:100%}
  </section>
   </div>
 </main>
-<footer>SplitSmart v2.5 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
+<footer>SplitSmart v2.6 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -333,20 +333,10 @@ const firebaseConfig = {
   appId: "1:1077421397509:web:14198a1b3e0e1836ae2e6e",
   measurementId: "G-4M6N59X9DP"
 };
-let auth, db, sharedDoc;
-let firebaseReady = false;
-try {
-  if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
-    throw new Error("Firebase SDK did not load. Please check the network connection and GitHub Pages deployment.");
-  }
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-  db = firebase.firestore();
-  sharedDoc = db.collection("sharedData").doc("main");
-  firebaseReady = true;
-} catch (initError) {
-  console.error("Firebase initialization failed:", initError);
-}
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const sharedDoc = db.collection("sharedData").doc("main");
 let cloudReady = false, remoteUpdate = false, unsubscribeShared = null;
 const authStatus = document.getElementById("authStatus");
 function setAuthStatus(message){ authStatus.textContent = message; }
@@ -731,38 +721,12 @@ function showSignedIn(user){
    if(doc.exists)setAuthStatus("Cloud sync connected. Signed in as "+(user.email||user.uid)+".");
  },err=>{cloudReady=false;setAuthStatus("Cloud sync blocked: "+(err.code||err.message)+". Firestore security rules must authorize this account.");});
 }
-document.getElementById("signInBtn").addEventListener("click",async()=>{
- const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPassword").value,btn=document.getElementById("signInBtn");
- if(!firebaseReady || !auth){setAuthStatus("Firebase could not be initialized. Refresh the page once. If this continues, check that the Firebase scripts are loading on GitHub Pages.");return;}
- if(!email||!password){setAuthStatus("Enter your email and password.");return;}
- btn.disabled=true;setAuthStatus("Signing in…");
- try{
-  await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-  await auth.signInWithEmailAndPassword(email,password);
- }catch(e){
-  const messages={
-   "auth/invalid-credential":"Sign-in failed: the email or password is incorrect.",
-   "auth/invalid-email":"Sign-in failed: please enter a valid email address.",
-   "auth/user-disabled":"Sign-in failed: this Firebase account is disabled.",
-   "auth/user-not-found":"Sign-in failed: this email is not registered in Firebase Authentication.",
-   "auth/wrong-password":"Sign-in failed: incorrect password.",
-   "auth/operation-not-allowed":"Sign-in failed: Email/Password authentication is not enabled in Firebase Authentication.",
-   "auth/unauthorized-domain":"Sign-in failed: this website domain is not authorized in Firebase Authentication.",
-   "auth/network-request-failed":"Sign-in failed: network request failed. Check your internet connection and Firebase availability."
-  };
-  setAuthStatus(messages[e.code]||("Sign-in failed: "+(e.code||e.message)));
-  btn.disabled=false;
- }
-});
+document.getElementById("signInBtn").addEventListener("click",async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPassword").value;if(!email||!password){setAuthStatus("Enter your email and password.");return;}try{await auth.signInWithEmailAndPassword(email,password);}catch(e){setAuthStatus("Sign-in failed: "+(e.code||e.message));}});
 document.getElementById("signUpBtn").addEventListener("click",async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPassword").value;if(!email||password.length<6){setAuthStatus("Enter an email and a password of at least 6 characters.");return;}setAuthStatus("Account creation is not enabled here until the household security rules are finalized. Create accounts in Firebase Authentication for now.");});
-document.getElementById("headerSignOutBtn").addEventListener("click",()=>{if(auth)auth.signOut();});
-if(firebaseReady){
+document.getElementById("headerSignOutBtn").addEventListener("click",()=>auth.signOut());
 auth.onAuthStateChanged(user=>{
- if(user){showSignedIn(user);}else{cloudReady=false;if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}appContent.style.display="none";document.getElementById("authPanel").style.display="block";document.getElementById("headerSignOutBtn").style.display="none";document.getElementById("signInBtn").style.display="inline-block";document.getElementById("signInBtn").disabled=false;document.getElementById("signUpBtn").style.display="inline-block";document.getElementById("authEmail").disabled=false;document.getElementById("authPassword").disabled=false;setAuthStatus("Not signed in. Cloud sync is unavailable until you sign in.");}
- });
-} else {
- setAuthStatus("Firebase could not be initialized. The app is offline until Firebase loads correctly.");
-}
+ if(user){showSignedIn(user);}else{cloudReady=false;if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}appContent.style.display="none";document.getElementById("authPanel").style.display="block";document.getElementById("headerSignOutBtn").style.display="none";document.getElementById("signInBtn").style.display="inline-block";document.getElementById("signUpBtn").style.display="inline-block";document.getElementById("authEmail").disabled=false;document.getElementById("authPassword").disabled=false;setAuthStatus("Not signed in. Cloud sync is unavailable until you sign in.");}
+});
 </script>
 <div id="settlementModal" class="settlement-modal" hidden><div class="settlement-modal-card"><h3 id="settlementModalTitle">Record settlement payment</h3><p class="muted" id="settlementModalDirection"></p><div class="settlement-modal-grid"><div class="settlement-kpi"><span>Full settlement amount</span><strong id="modalDue">₹0</strong></div><div class="settlement-kpi"><span>Already paid</span><strong id="modalPaid">₹0</strong></div><div class="settlement-kpi"><span>Remaining</span><strong id="modalRemaining">₹0</strong></div><div><label for="settlementPaymentAmount">Amount paid now (₹)</label><input id="settlementPaymentAmount" type="number" min="0" step="0.01" placeholder="Enter amount paid"></div><button type="button" id="settlementFullAmountBtn" class="secondary">Use full remaining amount</button></div><div class="submit-row" style="margin-top:16px"><button type="button" id="saveSettlementPaymentBtn">Save payment</button><button type="button" id="cancelSettlementPaymentBtn" class="secondary">Cancel</button></div><p class="muted" style="margin-top:10px;font-size:12px">The payment is recorded against this month's settlement. Once the remaining amount reaches ₹0, the settlement is marked as fully settled.</p></div></div></body>
 </html>
