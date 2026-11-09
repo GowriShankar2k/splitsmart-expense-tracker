@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.5 — Expense Management</title>
+<title>SplitSmart v2.6 — Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -135,7 +135,7 @@ main{width:100%}
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v2.5</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v2.6</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -170,7 +170,7 @@ main{width:100%}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.2:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
+ <div class="notice"><b>Version 2.6:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
@@ -350,7 +350,7 @@ main{width:100%}
  </div>
 </div>
 </main>
-<footer>SplitSmart v2.5 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
+<footer>SplitSmart v2.6 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -457,7 +457,12 @@ function render(){
  const [n1,n2]=names(), allMonthEx=currentExpenses(), ex=filteredExpenses(allMonthEx), total=sum(allMonthEx), share=total/2;
  const previousMonth=(()=>{const d=new Date(currentMonth()+"-01T00:00:00");d.setMonth(d.getMonth()-1);return monthOf(d);})();
  const previousRecords=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).filter(r=>r.month===previousMonth&&Number(r.remainingAmount||0)>0.005).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
- const previousOutstanding=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ // Carry the latest unpaid balance from the immediately previous month into this month's settlement.
+ // A carry-forward expense is only a history entry; it must not be counted twice in the settlement.
+ const previousCarryExpenses=allMonthEx.filter(e=>e.settlementCarryForward&&e.sourceSettlementMonth===previousMonth);
+ const previousOutstandingFromHistory=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ const previousOutstandingFromExpense=previousCarryExpenses.reduce((sum,e)=>sum+Math.max(0,Number(e.amount||0)),0);
+ const previousOutstanding=Math.max(previousOutstandingFromHistory,previousOutstandingFromExpense);
  const baseMonthEx=allMonthEx.filter(e=>!e.settlementCarryForward);
  const baseFunding=calculateFunding(baseMonthEx);
  const funding=calculateFunding(allMonthEx), contributed1=funding.contributed1, contributed2=funding.contributed2;
@@ -472,10 +477,21 @@ function render(){
  document.getElementById("paid1").textContent=money(contributed1);document.getElementById("paid2").textContent=money(contributed2);document.getElementById("paid1Sub").textContent="Direct payments";document.getElementById("paid2Sub").textContent="Direct payments";
  document.getElementById("sTotal").textContent=money(total);document.getElementById("sShare1Label").textContent=`${n1} assigned share`;document.getElementById("sShare2Label").textContent=`${n2} assigned share`;document.getElementById("sShare1").textContent=money(funding.share1);document.getElementById("sShare2").textContent=money(funding.share2);document.getElementById("sPaid1Label").textContent=`${n1} contributed`;document.getElementById("sPaid2Label").textContent=`${n2} contributed`;document.getElementById("sPaid1").textContent=money(contributed1);document.getElementById("sPaid2").textContent=money(contributed2);
  const prevRow=document.getElementById("previousSettlementRow");
- if(prevRow){prevRow.style.display=previousOutstanding>0.005?"flex":"none";document.getElementById("previousSettlementLabel").textContent=`Previous month outstanding (${previousMonth})`;document.getElementById("previousSettlementAmount").textContent=money(previousOutstanding);}
-  let settle="No settlement needed",sub="You are both square for this month.";
- if(balance>0.005){settle=`${n2} pays ${n1} ${money(balance)}`;sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n1}'s contributions exceed their assigned share of expenses.`}
- else if(balance<-.005){settle=`${n1} pays ${n2} ${money(-balance)}`;sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n2}'s contributions exceed their assigned share of expenses.`}
+ if(prevRow){
+   const hasPreviousOutstanding=previousOutstanding>0.005;
+   prevRow.style.display=hasPreviousOutstanding?"flex":"none";
+   document.getElementById("previousSettlementLabel").textContent=hasPreviousOutstanding?`Previous month outstanding (${previousMonth})`:`Previous month outstanding`;
+   document.getElementById("previousSettlementAmount").textContent=money(previousOutstanding);
+ }
+ let settle="No settlement needed",sub="You are both square for this month.";
+ if(balance>0.005){
+   settle=`${n2} pays ${n1}: ${money(balance)}`;
+   sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n1}'s contributions exceed their assigned share of expenses.`;
+ }
+ else if(balance<-.005){
+   settle=`${n1} pays ${n2}: ${money(-balance)}`;
+   sub=previousOutstanding>0.005?`${previousMonth} outstanding ${money(previousOutstanding)} is included in this settlement.`:`${n2}'s contributions exceed their assigned share of expenses.`;
+ }
  document.getElementById("settlementText").textContent=settle;document.getElementById("settlementSub").textContent=sub;
  const settlementRecords=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
  const currentSettled=settlementRecords.filter(r=>r.month===currentMonth()).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
@@ -669,7 +685,10 @@ function openSettlementModal(){
  const m=currentMonth(),ex=currentExpenses();
  const previousMonth=(()=>{const d=new Date(m+"-01T00:00:00");d.setMonth(d.getMonth()-1);return monthOf(d);})();
  const previousRecords=(Array.isArray(state.settlementHistory)?state.settlementHistory:[]).filter(r=>r.month===previousMonth&&Number(r.remainingAmount||0)>0.005).sort((a,b)=>Number(b.settledAt||0)-Number(a.settledAt||0));
- const previousOutstanding=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ const previousCarryExpenses=ex.filter(e=>e.settlementCarryForward&&e.sourceSettlementMonth===previousMonth);
+ const previousOutstandingFromHistory=previousRecords.length?Math.max(0,Number(previousRecords[0].remainingAmount||0)):0;
+ const previousOutstandingFromExpense=previousCarryExpenses.reduce((sum,e)=>sum+Math.max(0,Number(e.amount||0)),0);
+ const previousOutstanding=Math.max(previousOutstandingFromHistory,previousOutstandingFromExpense);
  const baseEx=ex.filter(e=>!e.settlementCarryForward),baseFunding=calculateFunding(baseEx);
  const signedPrevious=previousOutstanding*(previousRecords.length&&Number(previousRecords[0].balance||0)<0?-1:1);
  const combinedBalance=Number(baseFunding.balance1||0)+signedPrevious;
