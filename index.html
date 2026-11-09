@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.7 — MG Expense Management</title>
+<title>SplitSmart v2.7 — Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -130,12 +130,56 @@ main{width:100%}
 }
 
 
-.settlement-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}.settlement-modal-backdrop.show{display:flex}.settlement-modal{width:min(460px,100%);background:#fff;border-radius:16px;padding:22px;box-shadow:0 20px 60px rgba(15,23,42,.25)}.settlement-modal h3{margin:0 0 8px;font-size:18px}.settlement-modal p{margin:0 0 16px;color:var(--muted);font-size:13px}.settlement-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.settlement-option{min-height:48px}.settlement-modal .field{margin-top:12px}.settlement-modal .calc-box{background:#f7f9ff;border:1px solid #e1e7f4;border-radius:10px;padding:12px;margin-top:10px}.settlement-modal .calc-row{display:flex;justify-content:space-between;gap:12px;margin:5px 0}.settlement-modal .calc-row.remaining{font-weight:800;color:#116344;border-top:1px solid #e1e7f4;padding-top:9px;margin-top:9px}.settlement-modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}.settlement-modal .actions button{min-width:100px}@media(max-width:480px){.settlement-options{grid-template-columns:1fr}.settlement-modal{padding:18px}}
+/* ===== SplitSmart v2.3 — responsive visual redesign ===== */
+:root{
+ --bg:#f3f6fb;--card:#ffffff;--ink:#14213d;--muted:#68748a;--line:#e5eaf2;
+ --primary:#3156d8;--primary-dark:#213eaa;--primary-soft:#edf2ff;--green:#11845b;
+ --green-soft:#e9f8f1;--amber:#a66508;--amber-soft:#fff7e7;--red:#c83f50;
+ --shadow:0 10px 30px rgba(26,44,84,.07);--shadow-hover:0 16px 38px rgba(26,44,84,.11)
+}
+html{scroll-behavior:smooth}
+body{background:linear-gradient(180deg,#eef3fb 0,#f7f9fc 260px,#f3f6fb 100%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);font-size:15px}
+header{position:sticky;top:0;z-index:50;background:rgba(20,37,74,.96);backdrop-filter:blur(14px);padding:15px max(16px,calc((100vw - 1240px)/2));box-shadow:0 6px 22px rgba(10,24,55,.16);border-bottom:1px solid rgba(255,255,255,.08)}
+.brand{gap:13px}.logo{width:44px;height:44px;border-radius:14px;box-shadow:0 5px 18px rgba(0,0,0,.12)}.brand h1{font-size:21px;letter-spacing:-.3px}.brand p{font-size:12px;opacity:.9}
+.header-actions{gap:7px}.header-actions button{min-height:40px}
+main{max-width:1240px;margin:24px auto;padding:0 16px 60px}
+.notice{border:1px solid #d8e1ff;background:linear-gradient(90deg,#eef3ff,#f7f9ff);box-shadow:0 4px 16px rgba(49,86,216,.05);padding:13px 16px;margin-bottom:18px}
+.card{border:1px solid rgba(220,227,239,.9);border-radius:20px;padding:20px;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{box-shadow:var(--shadow-hover)}
+h2{font-size:18px;letter-spacing:-.2px;margin-top:0}h3{letter-spacing:-.1px}
+.tabs{display:flex;gap:7px;padding:6px;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:15px;box-shadow:0 5px 20px rgba(24,40,78,.05);position:sticky;top:74px;z-index:20;margin-bottom:20px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}.tab-button{white-space:nowrap;background:transparent;color:#53617a;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:750;transition:.15s ease}.tab-button:hover{background:#f0f3f9;color:var(--ink)}.tab-button.active{background:var(--primary);color:#fff;box-shadow:0 5px 14px rgba(49,86,216,.25)}
+.grid{gap:16px}.grid>.card{position:relative;overflow:hidden}.grid>.card:before{content:"";position:absolute;right:-32px;top:-34px;width:92px;height:92px;border-radius:50%;background:var(--primary-soft)}
+.metric-label{position:relative;font-size:11px;letter-spacing:.65px;color:#758197}.metric-value{position:relative;font-size:28px;line-height:1.1;letter-spacing:-.8px;margin-top:7px}.metric-sub{position:relative;margin-top:7px;color:var(--muted);font-size:12px}
+.layout{gap:18px}.layout>div:first-child{min-width:0}.layout>div:last-child{min-width:0}
+.form-grid{gap:14px}.form-grid>div{min-width:0}label{font-size:12px;font-weight:750;color:#53617a;letter-spacing:.1px}input,select{border:1px solid #d9e0eb;border-radius:11px;padding:12px 13px;transition:border-color .15s,box-shadow .15s}input:focus,select:focus{outline:none;border-color:#6e88e5;box-shadow:0 0 0 4px rgba(49,86,216,.10)}
+button,.button{border-radius:11px;min-height:40px;background:var(--primary);box-shadow:0 4px 12px rgba(49,86,216,.15);transition:transform .12s,box-shadow .12s,background .12s}button:hover,.button:hover{transform:translateY(-1px);box-shadow:0 7px 17px rgba(49,86,216,.20)}button.secondary{background:#edf1f7;color:#26334e;box-shadow:none}button.secondary:hover{background:#e5eaf3}button.ghost{box-shadow:none;border:1px solid rgba(255,255,255,.28)}button.danger{box-shadow:none}
+.submit-row{gap:9px;flex-wrap:wrap}.submit-row .muted{font-size:12px}
+.item-panel{background:linear-gradient(180deg,#fafcff,#f7f9fd)!important;border-color:#e4e9f2!important}.item-details{border:1px solid #e1e7f0;border-radius:12px;background:#fff;padding:9px 11px}.item-details summary{font-weight:700;color:#3f4e68;cursor:pointer}
+.settlement{border:1px solid #c9eadb!important;background:linear-gradient(145deg,#effaf5,#f8fcfa)!important;border-radius:16px!important;padding:17px!important;box-shadow:0 8px 24px rgba(17,132,91,.07)}.settlement strong{font-size:19px;color:#08734f;display:block;margin:7px 0}.settlement .muted{font-size:12px}.summary-row{padding:12px 0;border-bottom:1px solid #edf0f5}.summary-row:last-child{border-bottom:0}
+.category-list{display:grid;gap:9px}.category-item{border:1px solid #e8ecf2!important;border-radius:12px!important;background:#fbfcfe!important;padding:12px!important}
+.table-wrap{border:1px solid #e5e9f0;border-radius:14px;overflow:auto;background:#fff}table{border-collapse:separate;border-spacing:0;width:100%;min-width:720px}th{background:#f7f9fc;color:#6b778e;font-size:10px;letter-spacing:.6px;text-transform:uppercase;font-weight:800}th,td{padding:13px 14px;border-bottom:1px solid #edf0f4}tbody tr:last-child td{border-bottom:0}tbody tr:hover td{background:#fafbfe}
+.empty{padding:25px 15px;color:var(--muted);text-align:center}
+.weekly-cards{gap:14px}.weekly-card{border:1px solid var(--line)!important;border-radius:16px!important;background:#fff!important;box-shadow:var(--shadow)!important;padding:17px!important}
+footer{padding:25px 16px;color:#8490a5;font-size:12px;text-align:center}
+/* Auth screen */
+#authPanel{max-width:920px;margin:32px auto 18px!important;padding:30px!important;background:rgba(255,255,255,.96);box-shadow:0 18px 45px rgba(30,48,90,.10)}#authPanel h2{font-size:24px;margin-bottom:6px}#authPanel .muted{color:#738098}#authPanel .form-grid{margin-top:18px}#authPanel .submit-row{margin-top:14px}
+#authStatus{min-height:20px}
+/* Large screens */
+@media (min-width:1000px){.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr)}.toolbar{background:transparent}.layout .card{height:auto}.tabs{max-width:100%;}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Tablets */
+@media (max-width:999px){header{position:relative}.tabs{top:auto}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{display:grid;grid-template-columns:1fr}.toolbar .field{min-width:0}.toolbar .field.month{max-width:none}}
+/* Phones - Android/iOS */
+@media (max-width:640px){body{font-size:14px}header{padding:12px 14px}.brand h1{font-size:18px}.brand p{font-size:11px}.logo{width:40px;height:40px}.header-actions{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}.header-actions button{flex:0 0 auto;font-size:12px;padding:9px 11px}main{margin:12px auto;padding:0 11px 38px}.notice{font-size:12px;padding:11px 12px}.tabs{margin:0 -1px 14px;padding:5px;border-radius:13px}.tab-button{font-size:12px;padding:9px 12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{border-radius:16px;padding:15px}.grid .metric-value{font-size:20px}.metric-label{font-size:10px}.metric-sub{font-size:11px}.layout{display:block}.layout>div+div{margin-top:14px}.form-grid{grid-template-columns:1fr!important}.form-grid .wide{grid-column:auto}.amount-owner-group{grid-template-columns:1fr!important}.submit-row{align-items:stretch}.submit-row button{flex:1 1 auto}.table-wrap{margin-left:-1px;margin-right:-1px;border-radius:11px}table{min-width:680px}th,td{padding:11px 10px;font-size:12px}.weekly-cards{display:grid;grid-template-columns:1fr!important}.weekly-card .metric-value{font-size:22px}#authPanel{margin:16px 0!important;padding:20px 16px!important}#authPanel h2{font-size:20px}.auth-status{display:block}.card-head{gap:10px;align-items:flex-start}.card-head button{flex-shrink:0}.summary-controls{width:100%}.summary-controls select{min-width:0}.two-col{display:block}.two-col>.card+ .card{margin-top:14px}.settlement strong{font-size:17px}.category-item{padding:10px!important}}
+@media (max-width:380px){.grid{grid-template-columns:1fr}.header-actions button{font-size:11px}.tab-button{font-size:11px;padding:8px 10px}.metric-value{font-size:22px}}
+/* Prevent accidental horizontal overflow */
+img,svg,canvas{max-width:100%;height:auto}pre,code{max-width:100%;overflow:auto}
+
 </style>
 </head>
 <body>
 <header>
- <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:600;color:#d6def7">v2.1</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
+ <div class="brand"><div class="logo">₹</div><div><h1>SplitSmart <span style="font-size:12px;font-weight:700;color:#b9c7ff">v2.3</span></h1><p>Shared expenses. Fair splits. Smarter saving.</p></div></div>
  <div class="header-actions">
   <button class="ghost" id="calculatorToggle">Quick calculator</button>
   <button class="ghost" id="exportBtn">Export backup</button>
@@ -170,7 +214,7 @@ main{width:100%}
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.7:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
+ <div class="notice"><b>Version 2.3:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
@@ -306,7 +350,7 @@ main{width:100%}
  <section id="settlementHistoryTab" class="tab-panel" hidden>
   <section class="card">
    <div class="card-head"><div><h2>Settlement history</h2><p class="muted">Confirmed month-end settlements are saved as fixed snapshots and will not change when new expenses are added later.</p></div></div>
-   <div class="table-wrap"><table><thead><tr><th>Settlement date</th><th>Month</th><th>Total expenses</th><th>Assigned shares</th><th>Contributed</th><th>Settlement</th><th>Status</th><th>Actions</th></tr></thead><tbody id="settlementHistoryRows"></tbody></table></div>
+   <div class="table-wrap"><table><thead><tr><th>Settlement date</th><th>Month</th><th>Total expenses</th><th>Assigned shares</th><th>Contributed</th><th>Settlement</th><th>Status</th></tr></thead><tbody id="settlementHistoryRows"></tbody></table></div>
    <div class="empty" id="settlementHistoryEmpty" hidden>No settlements have been marked as settled yet.</div>
   </section>
 </section>
@@ -320,34 +364,6 @@ main{width:100%}
   </div>
  </section>
   </div>
-
-<div id="settlementModal" class="settlement-modal-backdrop" aria-hidden="true">
- <div class="settlement-modal" role="dialog" aria-modal="true" aria-labelledby="settlementModalTitle">
-  <h3 id="settlementModalTitle">Settlement status</h3>
-  <p id="settlementModalMessage">Choose how this month's settlement was completed.</p>
-  <div id="settlementChoiceView">
-   <div class="settlement-options">
-    <button type="button" class="settlement-option" id="fullySettledChoice">Fully settled</button>
-    <button type="button" class="settlement-option secondary" id="partiallySettledChoice">Partially settled</button>
-   </div>
-  </div>
-  <div id="partialSettlementView" style="display:none">
-   <div class="field"><label for="settledAmountInput">Amount settled (₹)</label><input id="settledAmountInput" type="number" min="0.01" step="0.01" placeholder="Enter amount settled"></div>
-   <div class="calc-box">
-    <div class="calc-row"><span>Total settlement due</span><b id="settlementDueAmount">₹0</b></div>
-    <div class="calc-row"><span>Amount settled</span><b id="settlementPaidAmount">₹0</b></div>
-    <div class="calc-row remaining"><span>Remaining amount</span><b id="settlementRemainingAmount">₹0</b></div>
-   </div>
-   <div class="actions"><button type="button" class="secondary" id="partialBackBtn">Back</button><button type="button" id="partialConfirmBtn">Continue</button></div>
-  </div>
-  <div id="carryForwardView" style="display:none">
-   <p id="carryForwardMessage"></p>
-   <div class="actions"><button type="button" class="secondary" id="carryNoBtn">No</button><button type="button" id="carryYesBtn">Yes, add to next month</button></div>
-  </div>
-  <div id="fullActions" class="actions" style="display:none"><button type="button" id="fullConfirmBtn">Confirm</button></div>
-  <div class="actions" id="settlementCancelActions"><button type="button" class="secondary" id="settlementCancelBtn">Cancel</button></div>
- </div>
-</div>
 </main>
 <footer>SplitSmart v2.3 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -508,9 +524,7 @@ function renderSettlementHistory(){
    const n1=r.friend1||names()[0], n2=r.friend2||names()[1];
    const payer=r.balance>0?n2:n1, receiver=r.balance>0?n1:n2, amount=Math.abs(Number(r.balance||0));
    const settlement=amount>0.005?`${safe(payer)} pays ${safe(receiver)} ${money(amount)}`:`No payment needed`;
-   const status=r.status||"Fully Settled", settled=Number(r.settledAmount??amount), remaining=Number(r.remainingAmount??0);
-   const statusBadge=status==="Partially Settled"?`<span class="settled-badge" style="background:#fff8e9;color:#a66508;border-color:#f2dfb0">Partially Settled</span>`:`<span class="settled-badge">✓ Fully Settled</span>`;
-   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b><div class="settlement-history-meta">Settled: ${money(settled)} · Remaining: ${money(remaining)}</div></td><td>${statusBadge}<div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td><td><button type="button" class="danger small-btn settlement-delete-btn" data-settlement-delete="${safe(r.id)}">Delete</button></td></tr>`;
+   return `<tr><td>${new Date(r.settledAt||Date.now()).toLocaleDateString("en-IN")}</td><td>${safe(r.month)}</td><td class="amount">${money(r.total)}</td><td>${safe(n1)} ${money(r.share1)} · ${safe(n2)} ${money(r.share2)}</td><td>${safe(n1)} ${money(r.paid1)} · ${safe(n2)} ${money(r.paid2)}</td><td><b>${settlement}</b></td><td><span class="settled-badge">✓ Settled</span><div class="settlement-history-meta">by ${safe(r.settledBy||"Unknown")}</div></td></tr>`;
  }).join("");
  document.getElementById("settlementHistoryEmpty").hidden=rows.length>0;
 }
@@ -653,44 +667,17 @@ function resetExpenseForm(afterSave=false){editingExpenseId=null;document.getEle
 function loadExpenseForEdit(id){const expense=state.expenses.find(x=>x.id===id);if(!expense)return;editingExpenseId=id;document.getElementById("date").value=expense.date||isoDate(today);document.getElementById("description").value=expense.description||"";document.getElementById("amount").value=Number(expense.amount||0);document.getElementById("category").value=expense.category||"Other expenses";refreshItemRows();document.getElementById("payer").value=String(Number(expense.payer)===2?2:1);if(expense.category==="Shopping"){shoppingOwner=Number(expense.shoppingOwner)===2?2:1;document.getElementById("shoppingOwnerSelect").value=String(shoppingOwner);loadItemDraft("Shopping");}else if(expense.category==="Groceries"){document.getElementById("itemRows").innerHTML="";(Array.isArray(expense.items)?expense.items:[]).forEach(item=>addItemRow(item.name,item.amount));if(!expense.items?.length)addItemRow();updateItemTotal();}else{document.getElementById("itemRows").innerHTML="";document.getElementById("itemPanel").style.display="none";}const hasCustom=Number.isFinite(Number(expense.share1))&&Number.isFinite(Number(expense.share2));document.getElementById("customSplitEnabled").checked=hasCustom;if(hasCustom){document.getElementById("customSplitFields").style.display="grid";document.getElementById("expenseShare1").value=expense.share1;document.getElementById("expenseShare2").value=expense.share2;updateSplitHint();}document.getElementById("expenseSubmitBtn").textContent="Save expense";document.getElementById("addAnotherExpenseBtn").style.display="none";document.getElementById("expenseForm").scrollIntoView({behavior:"smooth",block:"start"});}
 document.getElementById("addAnotherExpenseBtn").addEventListener("click",()=>{const date=document.getElementById("date").value||isoDate(today);editingExpenseId=null;document.getElementById("expenseSubmitBtn").textContent="Save expense";document.getElementById("addAnotherExpenseBtn").style.display="none";document.getElementById("description").value="";document.getElementById("amount").value="";document.getElementById("category").value="Groceries";document.getElementById("payer").value="1";document.getElementById("customSplitEnabled").checked=false;document.getElementById("customSplitFields").style.display="none";document.getElementById("expenseShare1").value="";document.getElementById("expenseShare2").value="";document.getElementById("date").value=date;refreshItemRows();document.getElementById("expenseForm").scrollIntoView({behavior:"smooth",block:"start"});});
 document.getElementById("expenseRows").addEventListener("click",e=>{const editId=e.target.dataset.edit;if(editId){loadExpenseForEdit(editId);return;}const id=e.target.dataset.delete;if(!id)return;if(confirm("Delete this expense?")){const old=state.expenses.find(x=>x.id===id);state.expenses=state.expenses.filter(x=>x.id!==id);if(old)audit("delete",`${old.description} · ${money(old.amount)} · ${old.date}`);persist();render()}});
-document.getElementById("settlementHistoryRows").addEventListener("click",e=>{const id=e.target.dataset.settlementDelete;if(!id)return;const record=(state.settlementHistory||[]).find(r=>String(r.id)===String(id));if(!record)return;if(confirm(`Delete the settlement history record for ${record.month||"this month"}? This removes only the settlement history snapshot; expenses are not deleted.`)){state.settlementHistory=(state.settlementHistory||[]).filter(r=>String(r.id)!==String(id));audit("delete",`Settlement history deleted · ${record.month||""} · ${money(record.settledAmount??0)} settled · ${money(record.remainingAmount??0)} remaining`);persist();render();renderSettlementHistory();}});
 document.getElementById("saveNames").addEventListener("click",()=>{state.friend1=document.getElementById("friend1").value.trim()||"Friend 1";state.friend2=document.getElementById("friend2").value.trim()||"Friend 2";audit("settings",`Names updated: ${state.friend1} and ${state.friend2}`);persist();render()});
-const settlementModal=document.getElementById("settlementModal");
-let settlementContext=null;
-function openSettlementModal(){
- const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);
- if(!ex.length){alert("There are no expenses to settle for this month.");return;}
- settlementContext={month:m,expenses:ex,funding,due:Math.abs(Number(funding.balance1||0)),payer:funding.balance1>0?2:funding.balance1<0?1:0,receiver:funding.balance1>0?1:funding.balance1<0?2:0};
- document.getElementById("settlementModalMessage").textContent=`Settlement due for ${m}: ${money(settlementContext.due)}.`;
- document.getElementById("settlementChoiceView").style.display="block";document.getElementById("partialSettlementView").style.display="none";document.getElementById("carryForwardView").style.display="none";document.getElementById("fullActions").style.display="none";document.getElementById("settlementCancelActions").style.display="flex";
- settlementModal.classList.add("show");settlementModal.setAttribute("aria-hidden","false");
-}
-function closeSettlementModal(){settlementModal.classList.remove("show");settlementModal.setAttribute("aria-hidden","true");settlementContext=null;}
-function recordSettlement(settledAmount,carryForward){
- const c=settlementContext;if(!c)return;
- const remaining=Math.max(0,c.due-settledAmount);
+document.getElementById("markSettledBtn").addEventListener("click",()=>{
+ const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex); if(!ex.length){alert("There are no expenses to settle for this month.");return;}
+ const existing=(state.settlementHistory||[]).filter(r=>r.month===m);
+ const message=existing.length?`A settlement for ${m} already exists. This will create a new settlement record using the current month totals. Continue?`:`Mark the ${m} settlement as settled?\n\n${funding.balance1>0.005?`${names()[1]} pays ${names()[0]} ${money(funding.balance1)}`:funding.balance1<-0.005?`${names()[0]} pays ${names()[1]} ${money(-funding.balance1)}`:`No payment is needed`}`;
+ if(!confirm(message))return;
  state.settlementHistory=Array.isArray(state.settlementHistory)?state.settlementHistory:[];
- state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:c.month,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:c.funding.total,share1:c.funding.share1,share2:c.funding.share2,paid1:c.funding.contributed1,paid2:c.funding.contributed2,balance:c.funding.balance1,settledAmount,remainingAmount:remaining,status:remaining<0.005?"Fully Settled":"Partially Settled",carryForward:!!carryForward,expenseCount:c.expenses.length,expenseIds:c.expenses.map(e=>e.id)});
- if(carryForward&&remaining>0.005){
-   const next=new Date(c.month+"-01T00:00:00");next.setMonth(next.getMonth()+1);const nextMonth=monthOf(next);
-   const desc=`Settlement balance carried forward from ${c.month}`;
-   const carry={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),date:`${nextMonth}-01`,description:desc,category:"Other expenses",amount:remaining,payer:c.receiver||1,created:Date.now(),share1:c.payer===1?remaining:0,share2:c.payer===2?remaining:0,settlementCarryForward:true,sourceSettlementMonth:c.month};
-   c.expenses.push(carry);state.expenses.push(carry);
-   audit("add",`${desc} · ${money(remaining)} · Other expenses`);
- }
- audit("settle-month",`${c.status||"Settlement"} ${c.month}: settled ${money(settledAmount)}, remaining ${money(remaining)}`);persist();render();closeSettlementModal();alert(remaining>0.005?`Settlement recorded. Remaining amount: ${money(remaining)}.`:"Settlement recorded as fully settled.");
-}
-document.getElementById("markSettledBtn").addEventListener("click",openSettlementModal);
-document.getElementById("fullySettledChoice").addEventListener("click",()=>{if(!settlementContext)return;document.getElementById("settlementChoiceView").style.display="none";document.getElementById("fullActions").style.display="flex";document.getElementById("settlementCancelActions").style.display="flex";document.getElementById("settlementModalMessage").textContent=`Confirm full settlement of ${money(settlementContext.due)}?`;});
-document.getElementById("fullConfirmBtn").addEventListener("click",()=>recordSettlement(settlementContext.due,false));
-document.getElementById("partiallySettledChoice").addEventListener("click",()=>{if(!settlementContext)return;document.getElementById("settlementChoiceView").style.display="none";document.getElementById("partialSettlementView").style.display="block";document.getElementById("settlementCancelActions").style.display="none";document.getElementById("settlementDueAmount").textContent=money(settlementContext.due);document.getElementById("settlementPaidAmount").textContent=money(0);document.getElementById("settlementRemainingAmount").textContent=money(settlementContext.due);document.getElementById("settledAmountInput").value="";document.getElementById("settledAmountInput").focus();});
-document.getElementById("settledAmountInput").addEventListener("input",()=>{const v=Math.max(0,Number(document.getElementById("settledAmountInput").value)||0);const r=Math.max(0,(settlementContext?.due||0)-v);document.getElementById("settlementPaidAmount").textContent=money(v);document.getElementById("settlementRemainingAmount").textContent=money(r);});
-document.getElementById("partialBackBtn").addEventListener("click",()=>{document.getElementById("partialSettlementView").style.display="none";document.getElementById("settlementChoiceView").style.display="block";document.getElementById("settlementCancelActions").style.display="flex";});
-document.getElementById("partialConfirmBtn").addEventListener("click",()=>{const v=Number(document.getElementById("settledAmountInput").value);if(!Number.isFinite(v)||v<=0){alert("Enter an amount greater than zero.");return;}if(v>=settlementContext.due-0.005){recordSettlement(settlementContext.due,false);return;}const remaining=settlementContext.due-v;document.getElementById("partialSettlementView").style.display="none";document.getElementById("carryForwardView").style.display="block";document.getElementById("settlementCancelActions").style.display="none";document.getElementById("carryForwardMessage").textContent=`${money(remaining)} remains unsettled. Add this remaining amount to ${monthOf(new Date(settlementContext.month+"-01T00:00:00")) === settlementContext.month ? "next month" : "the next month"}'s Expense History?`;settlementContext.pendingSettledAmount=v;settlementContext.pendingRemaining=remaining;});
-document.getElementById("carryYesBtn").addEventListener("click",()=>recordSettlement(settlementContext.pendingSettledAmount, true));
-document.getElementById("carryNoBtn").addEventListener("click",()=>recordSettlement(settlementContext.pendingSettledAmount, false));
-document.getElementById("settlementCancelBtn").addEventListener("click",closeSettlementModal);
-settlementModal.addEventListener("click",e=>{if(e.target===settlementModal)closeSettlementModal();});
+ state.settlementHistory.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),month:m,settledAt:Date.now(),settledBy:currentUserLabel,friend1:names()[0],friend2:names()[1],total:funding.total,share1:funding.share1,share2:funding.share2,paid1:funding.contributed1,paid2:funding.contributed2,balance:funding.balance1,expenseCount:ex.length,expenseIds:ex.map(e=>e.id)});
+ audit("settle-month",`Settled ${m}: ${money(funding.total)} total; balance ${money(Math.abs(funding.balance1))}`);
+ persist();render();alert(`Settlement for ${m} has been recorded.`);
+});
 document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=currentMonth(),ex=currentExpenses(),funding=calculateFunding(ex);state.monthlySnapshots=state.monthlySnapshots||{};state.monthlySnapshots[m]={month:m,savedAt:Date.now(),savedBy:currentUserLabel,expenseCount:ex.length,total:sum(ex),paid1:funding.contributed1,paid2:funding.contributed2,share1:funding.share1,share2:funding.share2,direct1:funding.direct1,direct2:funding.direct2,expenseIds:ex.map(e=>e.id)};audit("save-month",`Saved ${m} snapshot: ${ex.length} expenses, ${money(sum(ex))} total`);persist();render();alert(`Saved ${m} month-end snapshot.`);});
 ["historyDateFrom","historyDateTo","historyPaidBy","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("historyDetails").addEventListener("input",render);
@@ -772,7 +759,4 @@ auth.onAuthStateChanged(user=>{
 });
 </script>
 </body>
-<style>
-.settlement-delete-btn{padding:7px 10px;font-size:12px;}
-</style>
 </html>
