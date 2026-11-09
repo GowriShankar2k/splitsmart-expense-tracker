@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SplitSmart v2.10 — MG Expense Management</title>
+<title>SplitSmart v2.10 — Expense Management</title>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#697386;--line:#e4e9f1;--blue:#2855d9;--blue2:#eaf0ff;--green:#13845b;--red:#c33d4b;--amber:#a66508;--shadow:0 8px 24px rgba(28,42,75,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -399,7 +399,7 @@ body.login-view #authPanel #authStatus{
    <p class="muted">For quick sums, bill splits, and everyday calculations. Use C to clear.</p>
   </div>
  </section>
- <div class="notice"><b>Version 2.3:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
+ <div class="notice"><b>Version 2.11:</b> Itemized Shopping and Groceries, custom expense splits, monthly/yearly summaries, expense filters, audit history, and editable expenses, and settlement history.</div>
  <nav class="tabs" aria-label="Main sections">
   <button class="tab-button active" data-tab="dashboardTab">Dashboard</button>
   <button class="tab-button" data-tab="expenseHistoryTab">Expense history</button>
@@ -517,7 +517,26 @@ body.login-view #authPanel #authStatus{
  <section id="summaryTab" class="tab-panel" hidden>
   <div class="card">
    <div class="card-head"><div><h2>Monthly & yearly summary</h2><p class="muted">Review spending by month, person, and category.</p></div>
-    <div class="summary-controls"><label for="summaryYear">YEAR</label><select id="summaryYear"></select></div>
+    <div class="summary-controls">
+      <label for="summaryYear">YEAR</label>
+      <select id="summaryYear" aria-label="Summary year"></select>
+      <label for="summaryMonth">MONTH</label>
+      <select id="summaryMonth" aria-label="Summary month">
+       <option value="all">All months</option>
+       <option value="01">January</option>
+       <option value="02">February</option>
+       <option value="03">March</option>
+       <option value="04">April</option>
+       <option value="05">May</option>
+       <option value="06">June</option>
+       <option value="07">July</option>
+       <option value="08">August</option>
+       <option value="09">September</option>
+       <option value="10">October</option>
+       <option value="11">November</option>
+       <option value="12">December</option>
+      </select>
+     </div>
    </div>
    <div class="grid summary-metrics">
     <div class="card metric-card"><div class="metric-label">YEARLY SPEND</div><div class="metric-value" id="yearTotal">₹0</div></div>
@@ -550,7 +569,7 @@ body.login-view #authPanel #authStatus{
  </section>
   </div>
 </main>
-<footer>SplitSmart v2.10 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
+<footer>SplitSmart v2.11 · Keep shared purchases honest, review spending regularly, and agree on rules together.</footer>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -685,22 +704,83 @@ function render(){
 }
 
 function renderSummary(){
- const yearEl=document.getElementById("summaryYear");if(!yearEl)return;
+ const yearEl=document.getElementById("summaryYear"),monthEl=document.getElementById("summaryMonth");
+ if(!yearEl||!monthEl)return;
+
+ // Populate only valid year values. This also prevents stray values such as "Sun"
+ // from ever appearing in the YEAR dropdown.
  const years=new Set([String(today.getFullYear())]);
- state.expenses.forEach(e=>{if(e.date)years.add(e.date.slice(0,4));});
- const prior=yearEl.value;yearEl.innerHTML=[...years].sort((a,b)=>b.localeCompare(a)).map(y=>`<option value="${y}">${y}</option>`).join("");
- yearEl.value=years.has(prior)?prior:String(today.getFullYear());
- const year=yearEl.value,[n1,n2]=names(),list=state.expenses.filter(e=>String(e.date||"").startsWith(year));
- const total=sum(list),yearFunding=list.reduce((acc,e)=>{const m=monthOf(e.date);(acc[m]||(acc[m]=[])).push(e);return acc;},{});
- const yearlyFunding=Object.entries(yearFunding).reduce((acc,[m,monthEx])=>{const f=calculateFunding(monthEx);acc.paid1+=f.contributed1;acc.paid2+=f.contributed2;acc.share1+=f.share1;acc.share2+=f.share2;return acc;},{paid1:0,paid2:0,share1:0,share2:0});
- const paid1=yearlyFunding.paid1,paid2=yearlyFunding.paid2;
- document.getElementById("yearTotal").textContent=money(total);document.getElementById("yearFriend1Label").textContent=`${n1.toUpperCase()} CONTRIBUTION`;document.getElementById("yearFriend2Label").textContent=`${n2.toUpperCase()} CONTRIBUTION`;
- document.getElementById("yearPaid1").textContent=money(paid1);document.getElementById("yearPaid2").textContent=money(paid2);document.getElementById("yearAverage").textContent=money(total/12);
+ state.expenses.forEach(e=>{if(e.date){const y=String(e.date).slice(0,4);if(/^\d{4}$/.test(y))years.add(y);}});
+ const priorYear=yearEl.value;
+ yearEl.innerHTML=[...years].sort((a,b)=>b.localeCompare(a))
+   .map(y=>`<option value="${y}">${y}</option>`).join("");
+ yearEl.value=years.has(priorYear)?priorYear:String(today.getFullYear());
+
+ const priorMonth=monthEl.value||"all";
+ monthEl.value=["all","01","02","03","04","05","06","07","08","09","10","11","12"].includes(priorMonth)?priorMonth:"all";
+
+ const year=yearEl.value,selectedMonth=monthEl.value,[n1,n2]=names();
+ const yearList=state.expenses.filter(e=>String(e.date||"").startsWith(year));
+ const list=selectedMonth==="all"
+   ? yearList
+   : yearList.filter(e=>monthOf(e.date)===`${year}-${selectedMonth}`);
+
+ const total=sum(list);
+ const yearFunding=yearList.reduce((acc,e)=>{const m=monthOf(e.date);(acc[m]||(acc[m]=[])).push(e);return acc;},{});
+ const yearlyFunding=Object.entries(yearFunding).reduce((acc,[m,monthEx])=>{
+   const f=calculateFunding(monthEx);
+   acc.paid1+=f.contributed1;acc.paid2+=f.contributed2;
+   acc.share1+=f.share1;acc.share2+=f.share2;
+   return acc;
+ },{paid1:0,paid2:0,share1:0,share2:0});
+
+ const funding=calculateFunding(list);
+ const isMonthly=selectedMonth!=="all";
+ const paid1=isMonthly?funding.contributed1:yearlyFunding.paid1;
+ const paid2=isMonthly?funding.contributed2:yearlyFunding.paid2;
+ const share1=isMonthly?funding.share1:yearlyFunding.share1;
+ const share2=isMonthly?funding.share2:yearlyFunding.share2;
+
+ document.getElementById("yearTotal").textContent=money(total);
+ document.getElementById("yearFriend1Label").textContent=`${n1.toUpperCase()} ${isMonthly?"CONTRIBUTION":"CONTRIBUTION"}`;
+ document.getElementById("yearFriend2Label").textContent=`${n2.toUpperCase()} ${isMonthly?"CONTRIBUTION":"CONTRIBUTION"}`;
+ document.getElementById("yearPaid1").textContent=money(paid1);
+ document.getElementById("yearPaid2").textContent=money(paid2);
+ document.getElementById("yearAverage").textContent=isMonthly?money(total):money(total/12);
+
  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
- document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{const m=`${year}-${String(i+1).padStart(2,"0")}`,ex=list.filter(e=>monthOf(e.date)===m),f=calculateFunding(ex);return `<tr><td>${label} ${year}</td><td class="amount">${money(sum(ex))}</td><td>${money(f.contributed1)}</td><td>${money(f.contributed2)}</td><td>${money(f.share1)}</td><td>${money(f.share2)}</td><td>${ex.length}</td></tr>`}).join("");
- const cats=CATEGORIES.map(cat=>({cat,total:sum(list.filter(e=>e.category===cat))})).sort((a,b)=>b.total-a.total),max=Math.max(1,...cats.map(c=>c.total));
- document.getElementById("yearCategoryBreakdown").innerHTML=cats.map(c=>`<div class="cat-row"><span>${safe(c.cat)}</span><div class="bar"><span style="width:${c.total/max*100}%"></span></div><span class="cat-amount">${money(c.total)}</span></div>`).join("");
- document.getElementById("yearSettlement").innerHTML=`<div class="summary-row"><span>Total expenses</span><b>${money(total)}</b></div><div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div><div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div><div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(yearlyFunding.share1)}</b></div><div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(yearlyFunding.share2)}</b></div><div class="summary-row"><span>Settlements recorded</span><b>${(state.settlementHistory||[]).filter(r=>String(r.month||"").startsWith(year)).length}</b></div>`;
+ document.getElementById("monthlySummaryRows").innerHTML=monthNames.map((label,i)=>{
+   const m=`${year}-${String(i+1).padStart(2,"0")}`;
+   const ex=yearList.filter(e=>monthOf(e.date)===m),f=calculateFunding(ex);
+   const hidden=selectedMonth!=="all" && selectedMonth!==String(i+1).padStart(2,"0");
+   return `<tr ${hidden?'style="display:none"':''}>
+     <td>${label} ${year}</td>
+     <td class="amount">${money(sum(ex))}</td>
+     <td>${money(f.contributed1)}</td>
+     <td>${money(f.contributed2)}</td>
+     <td>${money(f.share1)}</td>
+     <td>${money(f.share2)}</td>
+     <td>${ex.length}</td>
+   </tr>`;
+ }).join("");
+
+ const cats=CATEGORIES.map(cat=>({cat,total:sum(list.filter(e=>e.category===cat))}))
+   .sort((a,b)=>b.total-a.total),max=Math.max(1,...cats.map(c=>c.total));
+ document.getElementById("yearCategoryBreakdown").innerHTML=cats.map(c=>
+   `<div class="cat-row"><span>${safe(c.cat)}</span><div class="bar"><span style="width:${c.total/max*100}%"></span></div><span class="cat-amount">${money(c.total)}</span></div>`
+ ).join("");
+
+ const summaryPeriod=isMonthly
+   ? `${monthNames[Number(selectedMonth)-1]} ${year}`
+   : `${year}`;
+
+ document.getElementById("yearSettlement").innerHTML=
+   `<div class="summary-row"><span>Total expenses (${summaryPeriod})</span><b>${money(total)}</b></div>
+    <div class="summary-row"><span>${safe(n1)} contribution toward expenses</span><b>${money(paid1)}</b></div>
+    <div class="summary-row"><span>${safe(n2)} contribution toward expenses</span><b>${money(paid2)}</b></div>
+    <div class="summary-row"><span>${safe(n1)} assigned expense share</span><b>${money(share1)}</b></div>
+    <div class="summary-row"><span>${safe(n2)} assigned expense share</span><b>${money(share2)}</b></div>
+    <div class="summary-row"><span>Settlements recorded</span><b>${(state.settlementHistory||[]).filter(r=>String(r.month||"").startsWith(year)).length}</b></div>`;
 }
 function renderSettlementHistory(){
  const body=document.getElementById("settlementHistoryRows"); if(!body)return;
@@ -868,6 +948,7 @@ document.getElementById("saveMonthBtn").addEventListener("click",()=>{const m=cu
 document.getElementById("historyDetails").addEventListener("input",render);
 document.getElementById("clearHistoryFilters").addEventListener("click",()=>{["historyDateFrom","historyDateTo","historyDetails","historyAmountMin","historyAmountMax"].forEach(id=>document.getElementById(id).value="");document.getElementById("historyPaidBy").value="all";render()});
 document.getElementById("summaryYear").addEventListener("change",renderSummary);
+document.getElementById("summaryMonth").addEventListener("change",renderSummary);
 document.getElementById("auditFilter").addEventListener("change",renderAudit);
 document.querySelectorAll(".tab-button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("active",b===btn));document.querySelectorAll(".tab-panel").forEach(p=>{p.hidden=p.id!==btn.dataset.tab;p.classList.toggle("active",p.id===btn.dataset.tab)});if(btn.dataset.tab==="summaryTab")renderSummary();if(btn.dataset.tab==="auditTab")renderAudit();if(btn.dataset.tab==="settlementHistoryTab")renderSettlementHistory();if(btn.dataset.tab==="tipsTab")renderTips(currentExpenses(),sum(currentExpenses()),CATEGORIES.map(c=>({cat:c,total:sum(currentExpenses().filter(e=>e.category===c))})).sort((a,b)=>b.total-a.total),...names());}));
 document.getElementById("monthFilter").addEventListener("change",render);
@@ -912,6 +993,7 @@ document.getElementById("calcKeys").addEventListener("click",e=>{
 
 load();document.getElementById("monthFilter").value=monthOf(isoDate(today));document.getElementById("date").value=isoDate(today);
 document.getElementById("summaryYear").innerHTML=`<option value="${today.getFullYear()}">${today.getFullYear()}</option>`;
+document.getElementById("summaryMonth").value="all";
 render();
 refreshItemRows();
 const appContent=document.getElementById("appContent");
